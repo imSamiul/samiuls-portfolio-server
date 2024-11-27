@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import resumeRoutes from './routes/resumeRoutes';
 import authRoutes from './routes/authRoutes';
 import connectDB from './db/mongoose';
+import cors from 'cors';
 
 // Load environment variables based on the current environment
 const envFile =
@@ -14,13 +15,22 @@ dotenv.config({ path: envFile });
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Allow CORS
+app.use(
+  cors({
+    origin: 'http://localhost:3001', // Specify the allowed origin (React app)
+    methods: ['GET', 'POST', 'PUT', 'DELETE'], // Allowed HTTP methods
+    credentials: true, // Allow cookies, authorization headers, etc.
+  }),
+);
+
 app.get('/', (req, res) => {
   res.send(`Hello, World! Environment: ${process.env.NODE_ENV}`);
 });
 app.use(express.json());
 connectDB();
-app.use('/resume', resumeRoutes);
-app.use('/auth', authRoutes);
+app.use('/api/resume', resumeRoutes);
+app.use('/api/auth', authRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
