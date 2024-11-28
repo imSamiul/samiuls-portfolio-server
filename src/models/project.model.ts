@@ -16,6 +16,34 @@ const projectSchema = new Schema(
       type: [String],
       required: true,
     },
+    backEndTech: {
+      type: [String],
+      required: true,
+    },
+    liveLink: {
+      type: String,
+      required: true,
+    },
+    frontEndRepo: {
+      type: String,
+      required: true,
+    },
+    backEndRepo: {
+      type: String,
+      required: true,
+    },
+    projectDetails: {
+      type: String,
+      required: true,
+    },
+    showOnHomepage: {
+      type: Boolean,
+      default: false,
+    },
+    image: {
+      type: String,
+      required: true,
+    },
     tasks: [
       {
         type: Schema.Types.ObjectId,
