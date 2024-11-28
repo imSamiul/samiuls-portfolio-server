@@ -1,6 +1,7 @@
-import { Schema } from 'mongoose';
+import { model, Schema } from 'mongoose';
+import { ProjectType } from '../types/ProjectType';
 
-const projectSchema = new Schema(
+const projectSchema = new Schema<ProjectType>(
   {
     title: {
       type: String,
@@ -44,22 +45,11 @@ const projectSchema = new Schema(
       type: String,
       required: true,
     },
-    tasks: [
-      {
-        type: Schema.Types.ObjectId,
-        ref: 'Task',
-      },
-    ],
   },
   {
     timestamps: true,
   },
 );
-projectSchema.methods.toJSON = function toJSON() {
-  const project = this;
-  const projectObject = project.toObject();
-  delete projectObject.__v;
-  return projectObject;
-};
-const Project = model('Project', projectSchema);
+
+const Project = model<ProjectType>('Project', projectSchema);
 module.exports = Project;
