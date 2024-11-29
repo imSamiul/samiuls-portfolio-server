@@ -42,7 +42,7 @@ const projectSchema = new Schema<ProjectType>(
       default: false,
     },
     image: {
-      type: String,
+      type: Buffer,
       required: true,
     },
   },
@@ -52,4 +52,4 @@ const projectSchema = new Schema<ProjectType>(
 );
 
 const Project = model<ProjectType>('Project', projectSchema);
-module.exports = Project;
+export default Project;

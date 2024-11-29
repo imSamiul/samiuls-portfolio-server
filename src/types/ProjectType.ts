@@ -10,7 +10,7 @@ export type ProjectType = Document & {
   backEndRepo: string;
   projectDetails: string;
   showOnHomepage?: boolean;
-  image: string;
+  image: Buffer;
   createdAt?: Date;
   updatedAt?: Date;
 };

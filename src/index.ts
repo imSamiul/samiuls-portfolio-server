@@ -2,6 +2,7 @@ import express from 'express';
 import dotenv from 'dotenv';
 import resumeRoutes from './routes/resumeRoutes';
 import authRoutes from './routes/authRoutes';
+import projectRoutes from './routes/projectRoutes';
 import connectDB from './db/mongoose';
 import cors from 'cors';
 
@@ -31,6 +32,7 @@ app.use(express.json());
 connectDB();
 app.use('/api/resume', resumeRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/project', projectRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
