@@ -3,7 +3,22 @@ import Project from '../models/project.model';
 import multer from 'multer';
 import sharp from 'sharp';
 
-// GET:
+// GET: get all projects
+export async function getProjects(req: Request, res: Response) {
+  console.log(req.body.tokenData);
+
+  try {
+    const projects = await Project.find();
+    res.status(200).json(projects);
+  } catch (error) {
+    let errorMessage = 'Failed to fetch projects';
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+    res.status(500).json({ message: errorMessage });
+    console.log(error);
+  }
+}
 
 // POST: Configure multer to use memory storage
 
@@ -41,7 +56,7 @@ export async function createProject(req: Request, res: Response) {
 
     // Ensure file is present and store as buffer
     if (!req.file) {
-      res.status(400).json({ error: 'Image is required' });
+      res.status(400).json({ message: 'Image is required' });
       return;
     }
     // Resize image using sharp
