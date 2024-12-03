@@ -90,6 +90,28 @@ export async function createProject(req: Request, res: Response) {
   }
 }
 
-// PATCH:
+// PATCH: update project to show project on homepage
+export async function updateShowOnHomePage(req: Request, res: Response) {
+  try {
+    const { id } = req.params;
+
+    const project = await Project.findById(id);
+    if (!project) {
+      res.status(404).json({ message: 'Project not found' });
+      return;
+    }
+
+    project.showOnHomepage = !project.showOnHomepage;
+    await project.save();
+    res.status(200).json({ message: 'Project updated successfully' });
+  } catch (error) {
+    let errorMessage = 'Failed to update project';
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+    res.status(500).json({ message: errorMessage });
+    console.log(error);
+  }
+}
 
 // DELETE:
