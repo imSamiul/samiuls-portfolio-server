@@ -2,6 +2,7 @@ import express from 'express';
 import {
   createProject,
   getProjects,
+  updateProject,
   updateShowOnHomePage,
   uploadProjectImage,
 } from '../controllers/projectController';
@@ -17,6 +18,7 @@ router.post('/create', uploadProjectImage, createProject);
 
 // PATCH:
 router.patch('/updateShowOnHomePage/:id', auth, updateShowOnHomePage);
+router.patch('/updateProject/:id', auth, updateProject);
 
 // DELETE:
 
