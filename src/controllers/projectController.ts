@@ -17,6 +17,25 @@ export async function getProjects(req: Request, res: Response) {
     console.log(error);
   }
 }
+// GET: get project by id
+export async function getProjectById(req: Request, res: Response) {
+  try {
+    const { id } = req.params;
+    const project = await Project.findById(id);
+    if (!project) {
+      res.status(404).json({ message: 'Project not found' });
+      return;
+    }
+    res.status(200).json(project);
+  } catch (error) {
+    let errorMessage = 'Failed to fetch project';
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+    res.status(500).json({ message: errorMessage });
+    console.log(error);
+  }
+}
 
 // POST: Configure multer to use memory storage
 
@@ -142,7 +161,7 @@ export async function updateProject(req: Request, res: Response) {
     project.frontEndRepo = frontEndRepo;
     project.backEndRepo = backEndRepo;
     project.projectDetails = projectDetails;
-    project.showOnHomepage = showOnHomepage === 'true';
+    project.showOnHomepage = showOnHomepage;
     await project.save();
     res.status(200).json({ message: 'Project updated successfully' });
   } catch (error) {

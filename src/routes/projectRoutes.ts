@@ -1,6 +1,7 @@
 import express from 'express';
 import {
   createProject,
+  getProjectById,
   getProjects,
   updateProject,
   updateShowOnHomePage,
@@ -12,9 +13,10 @@ const router = express.Router();
 
 // GET:
 router.get('/getAllProjects', auth, getProjects);
+router.get('/getProjectById/:id', auth, getProjectById);
 
 // POST:
-router.post('/create', uploadProjectImage, createProject);
+router.post('/create', auth, uploadProjectImage, createProject);
 
 // PATCH:
 router.patch('/updateShowOnHomePage/:id', auth, updateShowOnHomePage);
