@@ -6,7 +6,7 @@ import {
   getProjects,
   updateProject,
   updateShowOnHomePage,
-  uploadProjectImage,
+  uploadMiddleware,
 } from '../controllers/projectController';
 import auth from '../auth/auth';
 
@@ -17,7 +17,7 @@ router.get('/getAllProjects', auth, getProjects);
 router.get('/getProjectById/:id', auth, getProjectById);
 
 // POST:
-router.post('/create', auth, uploadProjectImage, createProject);
+router.post('/create', auth, uploadMiddleware, createProject);
 
 // PATCH:
 router.patch('/updateShowOnHomePage/:id', auth, updateShowOnHomePage);

@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import Project from '../models/project.model';
 import multer from 'multer';
 import sharp from 'sharp';
@@ -57,22 +57,53 @@ export async function getProjectById(req: Request, res: Response) {
 
 // POST: Configure multer to use memory storage
 
-const storage = multer.memoryStorage();
-const upload = multer({
-  storage,
-  limits: {
-    fileSize: 2000000,
-  },
-  fileFilter(req: Request, file, cb) {
-    // cb ==> callback
-    if (!file.originalname.match(/\.(jpg|jpeg|png)$/)) {
-      return cb(new Error('Please upload an image file (jpg, jpeg, or png)'));
-    }
-    cb(null, true);
-  },
-});
 // Middleware to handle single image upload
-export const uploadProjectImage = upload.single('image');
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 2 * 1024 * 1024 }, // Limit file size to 5MB
+  fileFilter: (req, file, cb) => {
+    // Allowed file types
+    const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+
+    if (allowedMimeTypes.includes(file.mimetype)) {
+      cb(null, true); // Accept file
+    } else {
+      // Explicitly cast error to Multer-compatible type
+      cb(
+        new Error(
+          'Invalid file type. Only JPEG, JPG, and PNG are allowed.',
+        ) as unknown as null,
+        false,
+      );
+    }
+  },
+}).single('image');
+
+// Middleware to handle single image upload
+export function uploadMiddleware(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  upload(req, res, (error) => {
+    if (error instanceof multer.MulterError) {
+      // Multer-specific errors
+      if (error.code === 'LIMIT_FILE_SIZE') {
+        return res
+          .status(400)
+          .json({ message: 'File size is too large. Max size is 2MB.' });
+      }
+      return res
+        .status(400)
+        .json({ message: `Multer error: ${error.message}` });
+    } else if (error) {
+      // Custom file type errors or other unexpected errors
+      return res.status(400).json({ message: error.message });
+    }
+    next();
+  });
+}
 
 // POST: Create a new project
 export async function createProject(req: Request, res: Response) {
