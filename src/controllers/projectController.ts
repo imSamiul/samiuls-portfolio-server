@@ -2,12 +2,24 @@ import { Request, Response } from 'express';
 import Project from '../models/project.model';
 import multer from 'multer';
 import sharp from 'sharp';
+import { ImageType } from '../types/ProjectType';
 
 // GET: get all projects
 export async function getProjects(req: Request, res: Response) {
   try {
     const projects = await Project.find();
-    res.status(200).json(projects);
+    // convert image buffer to base64 for each project
+
+    const projectWithBase64Image = projects.map((project) => {
+      if (project.image && (project.image as ImageType).data) {
+        const base64Image = `data:${(project.image as ImageType).contentType};base64,${(project.image as ImageType).data.toString('base64')}`;
+        project.image = base64Image;
+      }
+      return project.toObject();
+    });
+    console.log(projectWithBase64Image);
+
+    res.status(200).json(projectWithBase64Image);
   } catch (error) {
     let errorMessage = 'Failed to fetch projects';
     if (error instanceof Error) {
@@ -22,11 +34,17 @@ export async function getProjectById(req: Request, res: Response) {
   try {
     const { id } = req.params;
     const project = await Project.findById(id);
+
     if (!project) {
       res.status(404).json({ message: 'Project not found' });
       return;
     }
-    res.status(200).json(project);
+    // Convert image buffer to base64 if it exists
+    const projectObject = project.toObject();
+    if (projectObject.image && (projectObject.image as ImageType).data) {
+      projectObject.image = `data:${(projectObject.image as ImageType).contentType};base64,${(projectObject.image as ImageType).data.toString('base64')}`;
+    }
+    res.status(200).json(projectObject);
   } catch (error) {
     let errorMessage = 'Failed to fetch project';
     if (error instanceof Error) {
@@ -91,7 +109,10 @@ export async function createProject(req: Request, res: Response) {
       backEndRepo,
       projectDetails,
       showOnHomepage: showOnHomepage === 'true', // Convert string to boolean
-      image: resizedImageBuffer, // Save image as Buffer
+      image: {
+        data: resizedImageBuffer, // Store the buffer here
+        contentType: req.file.mimetype, // Store MIME type from multer
+      },
     });
     await newProject.save();
     res
@@ -174,4 +195,22 @@ export async function updateProject(req: Request, res: Response) {
   }
 }
 
-// DELETE:
+// DELETE: delete project
+export async function deleteProject(req: Request, res: Response) {
+  try {
+    const { id } = req.params;
+    const deletedProject = await Project.findByIdAndDelete(id);
+    if (!deletedProject) {
+      res.status(404).json({ message: 'Project not found' });
+      return;
+    }
+    res.status(200).json({ message: 'Project deleted successfully' });
+  } catch (error) {
+    let errorMessage = 'Failed to delete project';
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+    res.status(500).json({ message: errorMessage });
+    console.log(error);
+  }
+}

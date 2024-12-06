@@ -42,8 +42,8 @@ const projectSchema = new Schema<ProjectType>(
       default: false,
     },
     image: {
-      type: Buffer,
-      required: true,
+      data: Buffer,
+      contentType: String,
     },
   },
   {

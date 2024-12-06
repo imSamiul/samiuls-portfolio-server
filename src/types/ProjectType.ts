@@ -10,7 +10,13 @@ export type ProjectType = Document & {
   backEndRepo: string;
   projectDetails: string;
   showOnHomepage?: boolean;
-  image: Buffer;
+  image: ImageType | string;
+
   createdAt?: Date;
   updatedAt?: Date;
+};
+
+export type ImageType = {
+  data: Buffer;
+  contentType: string;
 };
