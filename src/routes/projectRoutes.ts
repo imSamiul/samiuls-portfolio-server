@@ -4,6 +4,7 @@ import {
   deleteProject,
   getProjectById,
   getProjects,
+  getProjectsForHomepage,
   updateProject,
   updateShowOnHomePage,
   uploadMiddleware,
@@ -15,6 +16,7 @@ const router = express.Router();
 // GET:
 router.get('/getAllProjects', auth, getProjects);
 router.get('/getProjectById/:id', auth, getProjectById);
+router.get('/getProjectsForHomepage', getProjectsForHomepage);
 
 // POST:
 router.post('/create', auth, uploadMiddleware, createProject);

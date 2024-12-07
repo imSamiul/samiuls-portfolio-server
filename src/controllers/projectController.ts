@@ -17,7 +17,6 @@ export async function getProjects(req: Request, res: Response) {
       }
       return project.toObject();
     });
-    console.log(projectWithBase64Image);
 
     res.status(200).json(projectWithBase64Image);
   } catch (error) {
@@ -47,6 +46,29 @@ export async function getProjectById(req: Request, res: Response) {
     res.status(200).json(projectObject);
   } catch (error) {
     let errorMessage = 'Failed to fetch project';
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+    res.status(500).json({ message: errorMessage });
+    console.log(error);
+  }
+}
+
+// GET: get projects to show on homepage
+export async function getProjectsForHomepage(req: Request, res: Response) {
+  try {
+    const projects = await Project.find({ showOnHomepage: true });
+    // convert image buffer to base64 for each project
+    const projectWithBase64Image = projects.map((project) => {
+      if (project.image && (project.image as ImageType).data) {
+        const base64Image = `data:${(project.image as ImageType).contentType};base64,${(project.image as ImageType).data.toString('base64')}`;
+        project.image = base64Image;
+      }
+      return project.toObject();
+    });
+    res.status(200).json(projectWithBase64Image);
+  } catch (error) {
+    let errorMessage = 'Failed to fetch projects';
     if (error instanceof Error) {
       errorMessage = error.message;
     }
