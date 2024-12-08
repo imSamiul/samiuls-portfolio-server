@@ -11,11 +11,12 @@ export async function getProjects(req: Request, res: Response) {
     // convert image buffer to base64 for each project
 
     const projectWithBase64Image = projects.map((project) => {
-      if (project.image && (project.image as ImageType).data) {
-        const base64Image = `data:${(project.image as ImageType).contentType};base64,${(project.image as ImageType).data.toString('base64')}`;
-        project.image = base64Image;
+      const projectObject = project.toObject();
+      if (projectObject.image && (projectObject.image as ImageType).data) {
+        const base64Image = `data:${(projectObject.image as ImageType).contentType};base64,${(projectObject.image as ImageType).data.toString('base64')}`;
+        projectObject.image = base64Image;
       }
-      return project.toObject();
+      return projectObject;
     });
 
     res.status(200).json(projectWithBase64Image);

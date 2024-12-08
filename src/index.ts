@@ -19,7 +19,7 @@ const PORT = process.env.PORT || 3000;
 // Allow CORS
 app.use(
   cors({
-    origin: 'http://localhost:3001', // Specify the allowed origin (React app)
+    origin: true, // Specify the allowed origin (React app)
     methods: ['GET', 'POST', 'PATCH', 'DELETE'], // Allowed HTTP methods
     credentials: true, // Allow cookies, authorization headers, etc.
   }),

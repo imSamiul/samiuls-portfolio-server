@@ -15,7 +15,7 @@ const router = express.Router();
 
 // GET:
 router.get('/getAllProjects', auth, getProjects);
-router.get('/getProjectById/:id', auth, getProjectById);
+router.get('/getProjectById/:id', getProjectById);
 router.get('/getProjectsForHomepage', getProjectsForHomepage);
 
 // POST:
