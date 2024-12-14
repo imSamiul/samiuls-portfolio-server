@@ -1,7 +1,6 @@
 node_modules
 node_modules/
 build
-dist
 .env
 .env.*
 .env.development
@@ -10,3 +9,4 @@ npm-debug.log
 yarn-error.log
 .env.production
 
+.vercel

@@ -7,10 +7,11 @@ import connectDB from './db/mongoose';
 import cors from 'cors';
 
 // Load environment variables based on the current environment
-const envFile =
-  process.env.NODE_ENV === 'production'
-    ? '.env.production'
-    : '.env.development';
+
+const env = process.env.NODE_ENV?.trim() || 'development';
+console.log(`Environment: ${env}`);
+
+const envFile = env === 'production' ? '.env.production' : '.env.development';
 dotenv.config({ path: envFile });
 
 const app = express();
@@ -41,3 +42,5 @@ app.use('/api/project', projectRoutes);
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
+
+export default app;
