@@ -8,7 +8,7 @@ const projectController_1 = require("../controllers/projectController");
 const auth_1 = __importDefault(require("../auth/auth"));
 const router = express_1.default.Router();
 // GET:
-router.get('/getAllProjects', auth_1.default, projectController_1.getProjects);
+router.get('/getAllProjects', projectController_1.getProjects);
 router.get('/getProjectById/:id', projectController_1.getProjectById);
 router.get('/getProjectsForHomepage', projectController_1.getProjectsForHomepage);
 // POST:

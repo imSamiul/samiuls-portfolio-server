@@ -14,7 +14,7 @@ import auth from '../auth/auth';
 const router = express.Router();
 
 // GET:
-router.get('/getAllProjects', auth, getProjects);
+router.get('/getAllProjects', getProjects);
 router.get('/getProjectById/:id', getProjectById);
 router.get('/getProjectsForHomepage', getProjectsForHomepage);
 
