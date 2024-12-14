@@ -7,3 +7,5 @@ dist
 .env.production
 npm-debug.log
 yarn-error.log
+.env.production
+
