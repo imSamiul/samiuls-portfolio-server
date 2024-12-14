@@ -25,6 +25,7 @@ app.use(
       'https://8295-103-180-245-251.ngrok-free.app',
       'http://192.168.0.174:3001',
       'http://localhost:4173',
+      'http://localhost:3000',
     ], // Specify the allowed origin (React app)
     methods: ['GET', 'POST', 'PATCH', 'DELETE'], // Allowed HTTP methods
     credentials: true, // Allow cookies, authorization headers, etc.
