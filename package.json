@@ -4,7 +4,7 @@
   "main": "index.js",
   "module": "commonjs",
   "scripts": {
-    "build": "rimraf dist && tsc",
+    "build": "npx tsc",
     "start-prod": "cross-env NODE_ENV=production PORT=4000 node ./dist/index.js",
     "start": "cross-env NODE_ENV=development PORT=3000 ts-node-dev --respawn --transpile-only ./src/index.ts",
     "lint": "eslint .",
