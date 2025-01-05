@@ -28,6 +28,7 @@ app.use((0, cors_1.default)({
     methods: ['GET', 'POST', 'PATCH', 'DELETE'], // Allowed HTTP methods
     credentials: true, // Allow cookies, authorization headers, etc.
 }));
+app.options('*', (0, cors_1.default)());
 app.get('/', (req, res) => {
     res.send(`Hello, World! Environment: ${process.env.NODE_ENV}`);
 });

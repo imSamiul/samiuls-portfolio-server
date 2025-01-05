@@ -29,6 +29,7 @@ app.use(
     credentials: true, // Allow cookies, authorization headers, etc.
   }),
 );
+app.options('*', cors());
 
 app.get('/', (req, res) => {
   res.send(`Hello, World! Environment: ${process.env.NODE_ENV}`);
