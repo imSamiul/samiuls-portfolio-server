@@ -25,21 +25,24 @@ app.use(
       'https://samiul3041.vercel.app', // Production frontend
       'http://localhost:3002',
     ], // Specify the allowed origin (React app)
-    methods: ['GET', 'POST', 'PATCH', 'DELETE'], // Allowed HTTP methods
+    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'], // Allowed HTTP methods
     credentials: true, // Allow cookies, authorization headers, etc.
   }),
 );
 app.options('*', cors());
 
+// Middleware
+app.use(express.json());
+// Connect to MongoDB
+connectDB();
+// Routes
 app.get('/', (req, res) => {
   res.send(`Hello, World! Environment: ${process.env.NODE_ENV}`);
 });
-app.use(express.json());
-connectDB();
 app.use('/api/resume', resumeRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/project', projectRoutes);
-
+// Start the server
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
