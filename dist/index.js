@@ -22,7 +22,7 @@ const PORT = process.env.PORT || 3000;
 app.use((0, cors_1.default)({
     origin: [
         'http://192.168.0.174:3002',
-        'https://samiuls-portfolio.vercel.app',
+        'https://samiul3041.vercel.app', // Production frontend
         'http://localhost:3002',
     ], // Specify the allowed origin (React app)
     methods: ['GET', 'POST', 'PATCH', 'DELETE'], // Allowed HTTP methods
