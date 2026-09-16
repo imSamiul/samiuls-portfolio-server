@@ -1,7 +1,8 @@
 import compression from 'compression';
 import cors from 'cors';
 import express from 'express';
-import helmet from 'helmet';
+import type { RequestHandler } from 'express';
+import helmetDefault from 'helmet';
 
 import { corsOrigins, env } from './config/env.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
@@ -10,6 +11,12 @@ import { requestLog } from './middleware/requestLog.js';
 import { withDatabase } from './middleware/withDatabase.js';
 import { routes } from './routes.js';
 import { sendSuccess } from './utils/response.js';
+
+// Vercel's build type-checks this file with a resolver that picks helmet's CJS
+// declarations, where the default import is typed as the module namespace
+// instead of the middleware factory. Local `tsc` picks the ESM declarations, so
+// the cast is what keeps both toolchains happy.
+const helmet = helmetDefault as unknown as () => RequestHandler;
 
 export function createApp() {
   const app = express();
