@@ -13,9 +13,8 @@ import { toProjectDetail, toProjectSummary } from './project.serializer.js';
 import * as projectService from './project.service.js';
 
 /**
- * The only paginated list: the website renders the first page on the server and
- * pulls the rest in as the visitor scrolls, so the meta is what tells it when to
- * stop asking.
+ * The only paginated list: the website renders one page per `?page=` URL, so
+ * the meta is what tells it how many of those URLs exist.
  */
 export const list: RequestHandler = async (req, res) => {
   const { page, limit } = validatedQuery<PaginationQuery>(req);
