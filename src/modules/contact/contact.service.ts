@@ -1,7 +1,7 @@
-import type { ContactMessageInput } from '#shared';
 import { Resend } from 'resend';
 
 import { env } from '../../config/env.js';
+import type { ContactMessageInput } from '../../shared/index.js';
 import { ApiError } from '../../utils/ApiError.js';
 
 let client: Resend | undefined;

@@ -13,7 +13,7 @@ samiuls-portfolio-api   Express 5 + Mongoose 9 + Cloudinary → Vercel (serverle
 ```
 
 - Package manager: **pnpm**; Node 22
-- Schemas/types: `src/shared` → import `#shared` (`package.json` `"imports"`)
+- Schemas/types: `src/shared`, imported relatively (`../../shared/index.js`) — the `#shared` alias is gone, see [Run / deploy](#run--deploy)
 - Sister frontend repo owns its own copy as `@/shared`. After a contract change, update **both** copies.
 - Manual API examples live in [`bruno/`](./bruno/README.md) (Bearer token, not a cookie jar)
 - **No** Redis, no Firebase. The runtime is Vercel's zero-config Express support — see [Serverless constraints](#serverless-constraints)
@@ -28,7 +28,7 @@ There is no seed and no roles. `ADMIN_EMAIL` is the only address that may sign u
 ## Hard rules (always)
 
 1. **Read before write** — open `src/modules/projects/`; copy its naming and nesting.
-2. **Schemas** — validate with `#shared` zod + `validate()` middleware, not ad-hoc checks in controllers.
+2. **Schemas** — validate with `src/shared` zod + `validate()` middleware, not ad-hoc checks in controllers.
 3. **Errors** — throw `ApiError` (status + machine `code`); `errorHandler` formats the envelope. Express 5 forwards rejected promises, so there is **no** `asyncHandler` and no try/catch that only re-sends.
 4. **Responses** — `sendSuccess(res, message, data, status?)`. Never `res.json()` a bare payload. Serializers emit `id`, never `_id`.
 5. **ESM** — `import type` for type-only imports, `.js` extension on every relative import.
@@ -59,7 +59,7 @@ src/
 ### Must follow
 
 - Mount under `/api/v1` via `routes.ts` (health at `/health`, outside the prefix)
-- Validate with `#shared` zod + `validate()` middleware
+- Validate with `src/shared` zod + `validate()` middleware
 - Auth = Bearer JWT in `Authorization` (cookies are the last planned migration)
 - Public responses via serializers + `sendSuccess` / `ApiError`
 - Named exports only. The single exception is `src/app.ts`, whose default export is how Vercel finds the app
@@ -228,7 +228,7 @@ pnpm lint && pnpm typecheck
 - The Vercel project's Framework Preset must be **Express**; with it, there is no build command and no output directory. If the dashboard still says "Other", the deploy fails with *No Output Directory named "public"* — fix the preset, do not add `vercel.json` or a `public/` folder to work around it
 - Every env var from `.env.example` goes into the Vercel project, plus `NODE_ENV=production`. `PORT` is not used there
 - `tsx` is a **runtime** dependency for the local and container paths (`pnpm start`), never `dist/`. There is deliberately **no `build` script**: Vercel compiles and bundles the entrypoint itself, and its docs warn that a transpiling build script can break that. `pnpm typecheck` is the type gate
-- `#shared` maps to `./src/shared/index.js`, the **compiled** path, not `index.ts`. Vercel compiles every traced `.ts` and renames it to `.js` in the function while shipping `package.json` untouched, so a `.ts` target resolves to a file that is not there and every request dies with `FUNCTION_INVOCATION_FAILED`. `tsx` and `tsc` both map the `.js` target back to the source, which is why the local paths still work
+- **`src/shared` is imported relatively, never through a `package.json` `"imports"` alias.** Vercel traces the entrypoint, compiles every `.ts` it reaches and renames it to `.js` inside the function, but ships `package.json` untouched — so an alias has no target that works on both sides: `./src/shared/index.ts` is not in the function at runtime, and `./src/shared/index.js` does not exist at trace time, so the file never gets bundled. Both spellings were deployed and both answered every request with `FUNCTION_INVOCATION_FAILED` (`ERR_MODULE_NOT_FOUND` in the runtime log). Relative `.js` specifiers go through that same rename, which is why they work
 - The `Dockerfile` is kept so the API can still run as a container (local parity, and an exit route if Vercel's limits stop fitting)
 - `app.set('trust proxy', 1)` — the platform terminates TLS, and the rate limiter needs the real client IP
 - `SIGTERM`/`SIGINT` close the server then the connection — container path only; Vercel recycles instances itself
@@ -246,5 +246,5 @@ pnpm lint && pnpm typecheck
 - Do not read `process.env` outside `src/config/env.ts`, or hand-write `res.status(500)`
 - Do not use default exports outside `src/app.ts`, and do not drop the `.js` extension from a relative import
 - Do not start long work after `sendSuccess` without `waitUntil` — the instance can be frozen before it runs
-- Do not assume a monorepo `packages/shared` — schemas are local `#shared`
+- Do not assume a monorepo `packages/shared` — schemas are local `src/shared`, imported relatively; do not reintroduce a `package.json` `"imports"` alias for them
 - Do not switch auth to cookies as a side effect of another task

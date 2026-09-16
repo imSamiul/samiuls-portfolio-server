@@ -1,6 +1,6 @@
-import type { ContactMessageInput } from '#shared';
 import type { RequestHandler } from 'express';
 
+import type { ContactMessageInput } from '../../shared/index.js';
 import { sendSuccess } from '../../utils/response.js';
 import * as contactService from './contact.service.js';
 

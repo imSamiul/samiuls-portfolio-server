@@ -1,11 +1,11 @@
+import type { RequestHandler } from 'express';
+
+import { validatedQuery } from '../../middleware/validate.js';
 import type {
   CreateProjectInput,
   PaginationQuery,
   UpdateProjectInput,
-} from '#shared';
-import type { RequestHandler } from 'express';
-
-import { validatedQuery } from '../../middleware/validate.js';
+} from '../../shared/index.js';
 import { ApiError } from '../../utils/ApiError.js';
 import { sendSuccess } from '../../utils/response.js';
 import { revalidateProject } from '../../utils/revalidateWeb.js';

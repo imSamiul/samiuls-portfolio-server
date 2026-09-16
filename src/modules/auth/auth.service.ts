@@ -1,7 +1,6 @@
-import type { CredentialsInput } from '#shared';
-
 import { env } from '../../config/env.js';
 import { User } from '../../models/index.js';
+import type { CredentialsInput } from '../../shared/index.js';
 import { ApiError } from '../../utils/ApiError.js';
 import { hashPassword, verifyPassword } from './password.js';
 import { signAuthToken } from './tokens.js';

@@ -10,5 +10,5 @@ Before scaffolding or editing code in this repository:
 1. Read and follow [`skills.md`](../../skills.md) at the backend root.
 2. For agent skill entry, use `.cursor/skills/portfolio/`.
 3. Mirror existing files under `src/` — do not invent new layouts. Copy `src/modules/projects/`.
-4. Zod/types live in `src/shared` (`#shared`). API modules use routes → controller → service → serializer, named exports only (the one exception is the default export in `src/app.ts`), ESM with `.js` on every relative import. Keep schema contracts aligned with the frontend repo.
+4. Zod/types live in `src/shared`, imported relatively (`../../shared/index.js`) — no `package.json` `"imports"` alias, Vercel's build cannot resolve one. API modules use routes → controller → service → serializer, named exports only (the one exception is the default export in `src/app.ts`), ESM with `.js` on every relative import. Keep schema contracts aligned with the frontend repo.
 5. Runtime is **Vercel's zero-config Express** — the default-exported app in `src/app.ts` is the deployment; `server.ts` stays for local and Docker. No `vercel.json`, no `api/` folder. Work fired after the response needs `waitUntil`. Express 5 forwards rejected promises, so there is no `asyncHandler`. No Redis; auth stays Bearer until a task explicitly asks for cookies.

@@ -1,6 +1,6 @@
-import { MAX_PROJECT_IMAGE_BYTES, MAX_RESUME_BYTES } from '#shared';
 import multer from 'multer';
 
+import { MAX_PROJECT_IMAGE_BYTES, MAX_RESUME_BYTES } from '../shared/index.js';
 import { ApiError } from '../utils/ApiError.js';
 
 const ALLOWED_MIME_TYPES = new Set(['image/jpeg', 'image/jpg', 'image/png']);

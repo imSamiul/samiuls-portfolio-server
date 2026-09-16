@@ -1,5 +1,3 @@
-import { RESUME_DOWNLOAD_NAME, RESUME_PUBLIC_ID } from '#shared';
-
 import {
   assertCloudinaryConfigured,
   cloudinary,
@@ -8,6 +6,7 @@ import {
 } from '../../config/cloudinary.js';
 import type { SiteAssetRecord } from '../../models/index.js';
 import { SiteAsset } from '../../models/index.js';
+import { RESUME_DOWNLOAD_NAME, RESUME_PUBLIC_ID } from '../../shared/index.js';
 import { ApiError } from '../../utils/ApiError.js';
 
 const RESUME_KEY = 'resume';

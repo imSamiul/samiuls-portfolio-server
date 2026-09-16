@@ -1,15 +1,15 @@
+import { Router } from 'express';
+
+import { requireAuth } from '../../middleware/requireAuth.js';
+import { uploadProjectImage } from '../../middleware/upload.js';
+import { validate } from '../../middleware/validate.js';
 import {
   createProjectSchema,
   objectIdParamsSchema,
   paginationQuerySchema,
   slugParamsSchema,
   updateProjectSchema,
-} from '#shared';
-import { Router } from 'express';
-
-import { requireAuth } from '../../middleware/requireAuth.js';
-import { uploadProjectImage } from '../../middleware/upload.js';
-import { validate } from '../../middleware/validate.js';
+} from '../../shared/index.js';
 import * as projectController from './project.controller.js';
 
 export const projectRoutes = Router();

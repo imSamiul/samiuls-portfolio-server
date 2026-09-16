@@ -1,6 +1,6 @@
-import type { CredentialsInput } from '#shared';
 import type { RequestHandler } from 'express';
 
+import type { CredentialsInput } from '../../shared/index.js';
 import { sendSuccess } from '../../utils/response.js';
 import { toAuthUserDto } from './auth.serializer.js';
 import * as authService from './auth.service.js';

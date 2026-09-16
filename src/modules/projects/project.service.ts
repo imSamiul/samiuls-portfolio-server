@@ -1,9 +1,3 @@
-import { PROJECT_IMAGE_HEIGHT, PROJECT_IMAGE_WIDTH } from '#shared';
-import type {
-  CreateProjectInput,
-  PaginationQuery,
-  UpdateProjectInput,
-} from '#shared';
 import sharp from 'sharp';
 
 import {
@@ -18,6 +12,15 @@ import type {
   ProjectSummaryRecord,
 } from '../../models/index.js';
 import { Project } from '../../models/index.js';
+import {
+  PROJECT_IMAGE_HEIGHT,
+  PROJECT_IMAGE_WIDTH,
+} from '../../shared/index.js';
+import type {
+  CreateProjectInput,
+  PaginationQuery,
+  UpdateProjectInput,
+} from '../../shared/index.js';
 import { ApiError } from '../../utils/ApiError.js';
 
 const WEBP_QUALITY = 80;
