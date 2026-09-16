@@ -1,0 +1,63 @@
+meta {
+  name: Samiul Portfolio API
+}
+
+auth {
+  mode: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+docs {
+  # Samiul Portfolio API
+
+  Express API behind the portfolio site. Base path is `{{apiPrefix}}`
+  (default `/api/v1`); health lives at `/health`, outside the prefix.
+
+  ## Auth model
+
+  A single admin account, authenticated with a **Bearer JWT** — there are no
+  cookies yet.
+
+  1. Call **Auth → Sign Up** once to create the account.
+  2. Call **Auth → Login**; its post-response script stores the JWT in the
+     `token` environment variable.
+  3. Protected requests use `auth: inherit`, which picks up that variable.
+
+  Credential routes are rate limited to 20 requests per 15 minutes per IP;
+  everything else under the prefix gets 600.
+
+  ## Response envelope
+
+  Success:
+
+  ```json
+  {
+    "success": true,
+    "message": "…",
+    "data": {}
+  }
+  ```
+
+  Error:
+
+  ```json
+  {
+    "success": false,
+    "message": "…",
+    "code": "INVALID_CREDENTIALS"
+  }
+  ```
+
+  Entities carry `id`, never `_id`. `Resume → Download` is the one endpoint
+  that does not answer with the envelope — it is a 302 to Cloudinary.
+
+  ## Suggested flow
+
+  1. Health Check
+  2. Auth → Sign Up (first run only) → Auth → Login
+  3. Projects → Create Project → copy `data.id` into the `projectId` variable
+  4. Projects → List / Get / Update / Toggle Homepage / Delete
+}

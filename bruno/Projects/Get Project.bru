@@ -1,0 +1,23 @@
+meta {
+  name: Get Project
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}{{apiPrefix}}/project/getProjectById/{{projectId}}
+  body: none
+  auth: none
+}
+
+docs {
+  # Get Project
+
+  Public. Backs `/projects/[projectId]` on the website.
+
+  | Status | Meaning |
+  | --- | --- |
+  | 200 | found; `message` is the project title |
+  | 404 | `NOT_FOUND` |
+  | 422 | `VALIDATION_ERROR` — not a 24-character hex id, rejected before the query |
+}

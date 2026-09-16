@@ -1,0 +1,24 @@
+meta {
+  name: Delete Project
+  type: http
+  seq: 7
+}
+
+delete {
+  url: {{baseUrl}}{{apiPrefix}}/project/deleteProject/{{projectId}}
+  body: none
+  auth: inherit
+}
+
+docs {
+  # Delete Project
+
+  Admin only, and irreversible: the Cloudinary asset is destroyed along with the
+  document. `data` comes back as `null`.
+
+  | Status | Meaning |
+  | --- | --- |
+  | 200 | deleted |
+  | 401 | missing or expired token |
+  | 404 | `NOT_FOUND` |
+}

@@ -1,0 +1,18 @@
+meta {
+  name: List Homepage Projects
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}{{apiPrefix}}/project/getProjectsForHomepage
+  body: none
+  auth: none
+}
+
+docs {
+  # List Homepage Projects
+
+  Same shape as List Projects, filtered to `showOnHomepage: true` and served by
+  the compound index on `{ showOnHomepage, createdAt }`.
+}

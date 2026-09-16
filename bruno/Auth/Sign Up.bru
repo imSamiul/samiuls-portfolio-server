@@ -1,0 +1,50 @@
+meta {
+  name: Sign Up
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}{{apiPrefix}}/auth/signUp
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "email": "{{adminEmail}}",
+    "password": "{{password}}"
+  }
+}
+
+script:post-response {
+  if (res.status === 201) {
+    bru.setEnvVar('token', res.body.data.token);
+  }
+}
+
+docs {
+  # Sign Up
+
+  Run once to create the admin account. A second call answers 409 `DUPLICATE_KEY`.
+
+  | Status | Meaning |
+  | --- | --- |
+  | 201 | created; the token is stored in the `token` variable |
+  | 401 | `NOT_ADMIN` — the email is not the server's `ADMIN_EMAIL` |
+  | 409 | `DUPLICATE_KEY` — the account already exists |
+  | 422 | `VALIDATION_ERROR` — password shorter than 6 characters |
+
+  **Example response**
+
+  ```json
+  {
+    "success": true,
+    "message": "Account created",
+    "data": {
+      "user": { "id": "…", "email": "…" },
+      "token": "eyJ…"
+    }
+  }
+  ```
+}

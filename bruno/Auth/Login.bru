@@ -1,0 +1,40 @@
+meta {
+  name: Login
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}{{apiPrefix}}/auth/login
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "email": "{{adminEmail}}",
+    "password": "{{password}}"
+  }
+}
+
+script:post-response {
+  if (res.status === 200) {
+    bru.setEnvVar('token', res.body.data.token);
+  }
+}
+
+docs {
+  # Login
+
+  Call this before any protected request: the script above stores the JWT in the
+  `token` variable, which the collection's bearer auth reads.
+
+  The token is valid for `JWT_TOKEN_TTL_DAYS` (7 by default).
+
+  | Status | Meaning |
+  | --- | --- |
+  | 200 | signed in |
+  | 401 | `INVALID_CREDENTIALS` or `NOT_ADMIN` |
+  | 422 | `VALIDATION_ERROR` |
+  | 429 | `TOO_MANY_REQUESTS` — 20 per 15 minutes per IP |
+}

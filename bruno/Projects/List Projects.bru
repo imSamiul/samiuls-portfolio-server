@@ -1,0 +1,48 @@
+meta {
+  name: List Projects
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}{{apiPrefix}}/project/getAllProjects
+  body: none
+  auth: none
+}
+
+docs {
+  # List Projects
+
+  Public, newest first. Backs the dashboard project list.
+
+  Copy `data[0].id` → the `projectId` variable.
+
+  **Example response**
+
+  ```json
+  {
+    "success": true,
+    "message": "3 projects",
+    "data": [
+      {
+        "id": "…",
+        "title": "…",
+        "summary": "…",
+        "frontEndTech": ["Next.js"],
+        "backEndTech": ["Express"],
+        "liveLink": "https://…",
+        "frontEndRepo": "https://…",
+        "backEndRepo": "https://…",
+        "projectDetails": "…",
+        "showOnHomepage": true,
+        "image": "https://res.cloudinary.com/…/portfolio/projects/….webp",
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "updatedAt": "2026-01-01T00:00:00.000Z"
+      }
+    ]
+  }
+  ```
+
+  An empty `image` means that document still holds the pre-Cloudinary buffer —
+  run `pnpm migrate:images`.
+}

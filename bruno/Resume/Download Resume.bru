@@ -1,0 +1,22 @@
+meta {
+  name: Download Resume
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}{{apiPrefix}}/resume/download
+  body: none
+  auth: none
+}
+
+docs {
+  # Download Resume
+
+  The one endpoint that does not answer with the response envelope: it is a
+  **302** to a Cloudinary URL carrying `fl_attachment`, so the browser saves the
+  file instead of rendering it.
+
+  Answers 503 `RESUME_NOT_CONFIGURED` until `RESUME_PUBLIC_ID` is set — run
+  `pnpm upload:resume`, which prints the value.
+}

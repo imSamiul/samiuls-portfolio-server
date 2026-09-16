@@ -1,0 +1,36 @@
+meta {
+  name: Update Project
+  type: http
+  seq: 5
+}
+
+patch {
+  url: {{baseUrl}}{{apiPrefix}}/project/updateProject/{{projectId}}
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "title": "Renamed project",
+    "frontEndTech": ["Next.js", "Tailwind"]
+  }
+}
+
+docs {
+  # Update Project
+
+  Admin only. JSON, not multipart — **the image cannot be replaced here**; delete
+  and recreate the project instead.
+
+  Partial by design: only the keys you send change. Unknown keys (`id`, `image`,
+  `createdAt`, `updatedAt`) are stripped by the schema, which doubles as the
+  mass-assignment whitelist. Unlike Create, the tech lists are real JSON arrays.
+
+  | Status | Meaning |
+  | --- | --- |
+  | 200 | updated |
+  | 401 | missing or expired token |
+  | 404 | `NOT_FOUND` |
+  | 422 | `VALIDATION_ERROR` — e.g. an empty tech list |
+}

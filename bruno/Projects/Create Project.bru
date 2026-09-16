@@ -1,0 +1,56 @@
+meta {
+  name: Create Project
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}{{apiPrefix}}/project/create
+  body: multipartForm
+  auth: inherit
+}
+
+body:multipart-form {
+  image: @file(/absolute/path/to/screenshot.png)
+  title: Portfolio
+  summary: A short summary
+  frontEndTech: ["Next.js","Tailwind"]
+  backEndTech: ["Express","MongoDB"]
+  liveLink: https://example.com
+  frontEndRepo: https://github.com/example/frontend
+  backEndRepo: https://github.com/example/backend
+  projectDetails: The long form write-up
+  showOnHomepage: false
+}
+
+script:post-response {
+  if (res.status === 201) {
+    bru.setEnvVar('projectId', res.body.data.id);
+  }
+}
+
+docs {
+  # Create Project
+
+  Admin only. Multipart, because the screenshot is uploaded in the same request.
+
+  - `image` is required, max **2 MB**, `jpeg` / `jpg` / `png`. Use Bruno's file
+    picker to replace the placeholder path.
+  - `frontEndTech` and `backEndTech` are **JSON array strings**, since multipart
+    fields are all text.
+  - Multer parses the body first, then the zod schema validates it. Unknown
+    fields are stripped rather than stored.
+
+  The buffer never touches disk: sharp re-encodes it to 1920×1080 webp and
+  uploads it straight to Cloudinary. If the insert then fails, the asset that was
+  just uploaded is destroyed.
+
+  | Status | Meaning |
+  | --- | --- |
+  | 201 | created; `data.id` is stored in `projectId` |
+  | 400 | `IMAGE_REQUIRED` or `UNSUPPORTED_IMAGE_TYPE` |
+  | 401 | missing or expired token |
+  | 413 | `LIMIT_FILE_SIZE` — larger than 2 MB |
+  | 422 | `VALIDATION_ERROR` — includes a `details` array, one entry per field |
+  | 503 | `CLOUDINARY_NOT_CONFIGURED` |
+}

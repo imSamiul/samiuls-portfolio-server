@@ -1,0 +1,24 @@
+meta {
+  name: Toggle Homepage
+  type: http
+  seq: 6
+}
+
+patch {
+  url: {{baseUrl}}{{apiPrefix}}/project/updateShowOnHomePage/{{projectId}}
+  body: none
+  auth: inherit
+}
+
+docs {
+  # Toggle Homepage
+
+  Admin only. Flips `showOnHomepage` — there is no body, so calling it twice
+  returns the project to its original state. `message` says which way it went.
+
+  | Status | Meaning |
+  | --- | --- |
+  | 200 | flipped |
+  | 401 | missing or expired token |
+  | 404 | `NOT_FOUND` |
+}

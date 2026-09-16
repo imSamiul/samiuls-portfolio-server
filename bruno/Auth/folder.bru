@@ -1,0 +1,11 @@
+meta {
+  name: Auth
+}
+
+auth {
+  mode: none
+}
+
+docs {
+  One admin account only: both routes reject any address other than the server's `ADMIN_EMAIL` with 401 `NOT_ADMIN`, before touching the database.
+}
