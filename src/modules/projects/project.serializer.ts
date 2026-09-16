@@ -1,15 +1,44 @@
-import type { ProjectRecord } from '../../models/index.js';
+import type {
+  ProjectRecord,
+  ProjectSummaryRecord,
+} from '../../models/index.js';
 
-/** The web app only ever needs the image URL, not the Cloudinary public id. */
-export interface ProjectDto extends Omit<ProjectRecord, '_id' | 'image'> {
+/**
+ * List payloads end up inside the website's RSC payload, so they carry only the
+ * fields a card renders — `projectDetails` is fetched with the single project.
+ */
+export interface ProjectSummaryDto
+  extends Omit<ProjectSummaryRecord, '_id' | 'image'> {
   id: string;
   image: string;
 }
 
-export function toProjectDto({
+export interface ProjectDto extends ProjectSummaryDto {
+  projectDetails: string;
+}
+
+/** The web app only ever needs the image URL, not the Cloudinary public id. */
+export function toProjectSummary({
   _id,
   image,
+  liveLink,
+  frontEndRepo,
+  backEndRepo,
   ...rest
-}: ProjectRecord): ProjectDto {
-  return { ...rest, id: String(_id), image: image?.url ?? '' };
+}: ProjectSummaryRecord): ProjectSummaryDto {
+  return {
+    ...rest,
+    id: String(_id),
+    image: image?.url ?? '',
+    // Blank links are omitted so the client tests for presence, not for ''.
+    ...(liveLink ? { liveLink } : {}),
+    ...(frontEndRepo ? { frontEndRepo } : {}),
+    ...(backEndRepo ? { backEndRepo } : {}),
+  };
+}
+
+export function toProjectDetail(project: ProjectRecord): ProjectDto {
+  const { projectDetails, ...summary } = project;
+
+  return { ...toProjectSummary(summary), projectDetails };
 }

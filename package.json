@@ -15,7 +15,8 @@
     "lint:fix": "eslint . --fix",
     "test": "vitest run --passWithNoTests",
     "migrate:images": "tsx src/scripts/migrateProjectImagesToCloudinary.ts",
-    "upload:resume": "tsx src/scripts/uploadResume.ts"
+    "backfill:slugs": "tsx src/scripts/backfillProjectSlugs.ts",
+    "backfill:publishing": "tsx src/scripts/backfillProjectPublishing.ts"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
@@ -29,6 +30,9 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^9.10.1",
     "multer": "2.4.0",
+    "pino": "^10.3.1",
+    "pino-http": "^11.0.0",
+    "resend": "^6.28.1",
     "sharp": "^0.33.5",
     "tsx": "^4.23.13",
     "zod": "^4.6.5"

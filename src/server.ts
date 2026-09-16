@@ -1,13 +1,14 @@
-/* eslint-disable no-console */
 import { createApp } from './app.js';
 import { connectDatabase, disconnectDatabase } from './config/db.js';
 import { env } from './config/env.js';
+import { logger } from './config/logger.js';
 
 async function bootstrap() {
   await connectDatabase();
 
   const server = createApp().listen(env.PORT, () => {
-    console.log(
+    logger.info(
+      { port: env.PORT, prefix: env.API_PREFIX },
       `API listening on http://localhost:${env.PORT}${env.API_PREFIX}`,
     );
   });
@@ -22,7 +23,7 @@ async function bootstrap() {
   process.on('SIGTERM', shutdown);
 }
 
-bootstrap().catch((error) => {
-  console.error('Failed to start API', error);
+bootstrap().catch((error: unknown) => {
+  logger.fatal({ err: error }, 'Failed to start API');
   process.exit(1);
 });

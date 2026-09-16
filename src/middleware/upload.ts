@@ -1,4 +1,4 @@
-import { MAX_PROJECT_IMAGE_BYTES } from '#shared';
+import { MAX_PROJECT_IMAGE_BYTES, MAX_RESUME_BYTES } from '#shared';
 import multer from 'multer';
 
 import { ApiError } from '../utils/ApiError.js';
@@ -27,3 +27,22 @@ export const uploadProjectImage = multer({
     );
   },
 }).single('image');
+
+/** The resume is a PDF, so it needs its own filter and a larger budget. */
+export const uploadResumePdf = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_RESUME_BYTES },
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype === 'application/pdf') {
+      cb(null, true);
+      return;
+    }
+
+    cb(
+      ApiError.badRequest(
+        'The resume must be a PDF',
+        'UNSUPPORTED_RESUME_TYPE',
+      ),
+    );
+  },
+}).single('resume');

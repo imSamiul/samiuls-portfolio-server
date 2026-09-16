@@ -1,26 +1,31 @@
-/* eslint-disable no-console */
-import type { RequestHandler } from 'express';
+import { randomUUID } from 'node:crypto';
 
-import { isTest } from '../config/env.js';
+import { pinoHttp } from 'pino-http';
+
+import { logger } from '../config/logger.js';
 
 /**
- * One-line access log: method, URL, status, duration.
- * Skipped in tests so suite output stays quiet.
+ * Access log, plus a request id stamped on every line logged during that
+ * request — so a single error report leads straight back to the request that
+ * caused it. The id also goes out as a response header, which is what an admin
+ * can quote when something looks wrong.
+ *
+ * Silenced in tests through the logger's level, not a flag here.
  */
-export const requestLog: RequestHandler = (req, res, next) => {
-  if (isTest) {
-    next();
-    return;
-  }
+export const requestLog = pinoHttp({
+  logger,
+  genReqId: (req, res) => {
+    // Koyeb may already have tagged the request; keep its id so the two sets of
+    // logs line up.
+    const forwarded = req.headers['x-request-id'];
+    const id = typeof forwarded === 'string' ? forwarded : randomUUID();
 
-  const started = Date.now();
+    res.setHeader('x-request-id', id);
 
-  res.on('finish', () => {
-    const ms = Date.now() - started;
-    const status = res.statusCode;
-    const ok = status < 400 ? 'OK' : 'ERR';
-    console.log(`${req.method} ${req.originalUrl} ${status} ${ok} +${ms}ms`);
-  });
-
-  next();
-};
+    return id;
+  },
+  // 500s are logged again by errorHandler with the error attached, so this line
+  // only needs to say the request finished badly.
+  customLogLevel: (_req, res, error) =>
+    res.statusCode >= 500 || error ? 'warn' : 'info',
+});

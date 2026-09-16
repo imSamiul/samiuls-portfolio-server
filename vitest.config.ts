@@ -21,6 +21,16 @@ export default defineConfig({
       JWT_TOKEN: 'test-only-jwt-secret',
       ADMIN_EMAIL: 'admin@example.com',
       CORS_ORIGIN: 'http://localhost:3002',
+      // The Resend SDK itself is mocked; these only get the service past its
+      // "not configured" guard.
+      RESEND_API_KEY: 'test-only-resend-key',
+      CONTACT_FROM_EMAIL: 'onboarding@resend.dev',
+      // Only so `cloudinary.url()` can build delivery URLs, which is pure
+      // string work. Never exercise an upload path in a test: with these set it
+      // would reach the network instead of stopping at the guard.
+      CLOUDINARY_CLOUD_NAME: 'test-cloud',
+      CLOUDINARY_API_KEY: 'test-only-key',
+      CLOUDINARY_API_SECRET: 'test-only-secret',
     },
     include: ['src/**/*.test.ts'],
     setupFiles: ['./src/test/setup.ts'],

@@ -3,25 +3,55 @@ import type { RequestHandler } from 'express';
 
 import { ApiError } from '../../utils/ApiError.js';
 import { sendSuccess } from '../../utils/response.js';
-import { toProjectDto } from './project.serializer.js';
+import { revalidateProject } from '../../utils/revalidateWeb.js';
+import { toProjectDetail, toProjectSummary } from './project.serializer.js';
 import * as projectService from './project.service.js';
 
 export const list: RequestHandler = async (_req, res) => {
   const projects = await projectService.listProjects();
 
-  sendSuccess(res, `${projects.length} projects`, projects.map(toProjectDto));
+  sendSuccess(
+    res,
+    `${projects.length} projects`,
+    projects.map(toProjectSummary),
+  );
+};
+
+/** Admin only: the dashboard has to see drafts, which the public lists hide. */
+export const listForDashboard: RequestHandler = async (_req, res) => {
+  const projects = await projectService.listAllProjects();
+
+  sendSuccess(
+    res,
+    `${projects.length} projects`,
+    projects.map(toProjectSummary),
+  );
 };
 
 export const listForHomepage: RequestHandler = async (_req, res) => {
   const projects = await projectService.listHomepageProjects();
 
-  sendSuccess(res, `${projects.length} projects`, projects.map(toProjectDto));
+  sendSuccess(
+    res,
+    `${projects.length} projects`,
+    projects.map(toProjectSummary),
+  );
 };
 
 export const detail: RequestHandler<{ id: string }> = async (req, res) => {
   const project = await projectService.getProject(req.params.id);
 
-  sendSuccess(res, project.title, toProjectDto(project));
+  sendSuccess(res, project.title, toProjectDetail(project));
+};
+
+/** What the public site uses; `detail` stays for the dashboard's edit page. */
+export const detailBySlug: RequestHandler<{ slug: string }> = async (
+  req,
+  res,
+) => {
+  const project = await projectService.getProjectBySlug(req.params.slug);
+
+  sendSuccess(res, project.title, toProjectDetail(project));
 };
 
 export const create: RequestHandler<
@@ -35,7 +65,10 @@ export const create: RequestHandler<
 
   const project = await projectService.createProject(req.body, req.file.buffer);
 
-  sendSuccess(res, 'Project published', toProjectDto(project), 201);
+  sendSuccess(res, 'Project published', toProjectDetail(project), 201);
+  // After the response: telling the website is an outbound integration, not part
+  // of the write, and it must never be able to fail one.
+  revalidateProject(project.slug);
 };
 
 export const update: RequestHandler<
@@ -45,7 +78,8 @@ export const update: RequestHandler<
 > = async (req, res) => {
   const project = await projectService.updateProject(req.params.id, req.body);
 
-  sendSuccess(res, 'Project updated', toProjectDto(project));
+  sendSuccess(res, 'Project updated', toProjectDetail(project));
+  revalidateProject(project.slug);
 };
 
 export const toggleHomepage: RequestHandler<{ id: string }> = async (
@@ -59,12 +93,28 @@ export const toggleHomepage: RequestHandler<{ id: string }> = async (
     project.showOnHomepage
       ? 'Project shown on the homepage'
       : 'Project hidden from the homepage',
-    toProjectDto(project),
+    toProjectDetail(project),
+    );
+  revalidateProject(project.slug);
+};
+
+export const toggleStatus: RequestHandler<{ id: string }> = async (
+  req,
+  res,
+) => {
+  const project = await projectService.toggleStatus(req.params.id);
+
+  sendSuccess(
+    res,
+    project.status === 'published' ? 'Project published' : 'Project unpublished',
+    toProjectDetail(project),
   );
+  revalidateProject(project.slug);
 };
 
 export const remove: RequestHandler<{ id: string }> = async (req, res) => {
-  await projectService.deleteProject(req.params.id);
+  const project = await projectService.deleteProject(req.params.id);
 
   sendSuccess(res, 'Project deleted', null);
+  revalidateProject(project.slug);
 };

@@ -17,6 +17,19 @@ docs {
   **302** to a Cloudinary URL carrying `fl_attachment`, so the browser saves the
   file instead of rendering it.
 
-  Answers 503 `RESUME_NOT_CONFIGURED` until `RESUME_PUBLIC_ID` is set — run
-  `pnpm upload:resume`, which prints the value.
+  The website links to this directly with a plain anchor. Do not fetch it as a
+  blob from JavaScript: that buffers the whole PDF in memory, throws away the
+  `Content-Disposition` filename, and makes the download depend on Cloudinary's
+  CORS policy.
+
+  The redirect target includes the stored Cloudinary `version`, so replacing the
+  resume changes the URL and no CDN or browser serves the old PDF.
+
+  Bruno follows redirects, so the response body here is the PDF itself.
+
+  | Status | Meaning |
+  | --- | --- |
+  | 302 | redirect to the PDF |
+  | 503 | `RESUME_NOT_CONFIGURED` — nothing uploaded yet, see **Upload Resume** |
+  | 503 | `CLOUDINARY_NOT_CONFIGURED` |
 }

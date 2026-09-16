@@ -1,0 +1,32 @@
+meta {
+  name: Get Project By Slug
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}{{apiPrefix}}/project/getProjectBySlug/{{projectSlug}}
+  body: none
+  auth: none
+}
+
+docs {
+  # Get Project By Slug
+
+  Public. This is what `/projects/[slug]` on the website calls — **Get Project**
+  stays for the dashboard's edit page, which holds an id.
+
+  A separate route rather than one param that accepts either: `getProjectById`
+  validates its param as an ObjectId, so a slug sent there is rejected with 422.
+
+  Slugs are derived from the title at create time and never move on their own —
+  renaming a project leaves its URL alone. An admin can still set the slug
+  explicitly, and the old ObjectId URL keeps working: the website redirects it
+  permanently to the slug.
+
+  | Status | Meaning |
+  | --- | --- |
+  | 200 | the full project, including `projectDetails` |
+  | 404 | `NOT_FOUND` |
+  | 422 | `VALIDATION_ERROR` — not a lowercase, dash-separated slug |
+}

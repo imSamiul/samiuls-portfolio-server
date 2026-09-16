@@ -30,3 +30,6 @@ export const apiLimiter = createLimiter(600);
 
 /** Credential endpoints get a much tighter budget per IP. */
 export const authLimiter = createLimiter(20);
+
+/** Tighter still: every accepted contact message costs an email. */
+export const contactLimiter = createLimiter(5);

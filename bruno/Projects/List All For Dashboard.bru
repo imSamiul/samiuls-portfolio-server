@@ -1,0 +1,28 @@
+meta {
+  name: List All For Dashboard
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{baseUrl}}{{apiPrefix}}/project/getAllProjectsForDashboard
+  body: none
+  auth: inherit
+}
+
+docs {
+  # List All For Dashboard
+
+  Admin only, and the **only** list that includes drafts. Same payload shape as
+  **List Projects** — `projectDetails` is still projected away.
+
+  A separate route rather than a query param on `getAllProjects`: the difference
+  between the two is who may see drafts, and that belongs in the route.
+
+  Sorted like the public lists: `order` ascending, then newest first.
+
+  | Status | Meaning |
+  | --- | --- |
+  | 200 | every project, drafts included |
+  | 401 | missing or expired token |
+}

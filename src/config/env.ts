@@ -8,13 +8,18 @@ import { z } from 'zod';
 dotenv.config({ path: '.env.development' });
 
 /**
- * Cloudinary is optional in development and test so the API can boot from a
- * bare clone, but mandatory in production where every image lives there.
+ * Cloudinary and Resend are optional in development and test so the API can
+ * boot from a bare clone, but mandatory in production where images live in
+ * Cloudinary and the contact form has to deliver.
  */
 const productionRequired = [
   'CLOUDINARY_CLOUD_NAME',
   'CLOUDINARY_API_KEY',
   'CLOUDINARY_API_SECRET',
+  'RESEND_API_KEY',
+  'CONTACT_FROM_EMAIL',
+  'WEB_REVALIDATE_URL',
+  'REVALIDATE_SECRET',
 ] as const;
 
 const envSchema = z
@@ -40,8 +45,16 @@ const envSchema = z
     CLOUDINARY_API_KEY: z.string().optional(),
     CLOUDINARY_API_SECRET: z.string().optional(),
 
-    // Printed by `pnpm upload:resume`; without it the resume route answers 503.
-    RESUME_PUBLIC_ID: z.string().optional(),
+    // Contact form delivery. Without a verified Resend domain, the only usable
+    // sender is `onboarding@resend.dev` — fine, since it only mails ADMIN_EMAIL.
+    RESEND_API_KEY: z.string().optional(),
+    CONTACT_FROM_EMAIL: z.string().optional(),
+
+    // The website's revalidation webhook. Without both, writes skip the call —
+    // and since the site caches project data indefinitely, nothing would ever
+    // update. Hence required in production.
+    WEB_REVALIDATE_URL: z.string().optional(),
+    REVALIDATE_SECRET: z.string().optional(),
   })
   .superRefine((value, ctx) => {
     if (value.NODE_ENV !== 'production') return;

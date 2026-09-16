@@ -8,4 +8,6 @@ auth {
 
 docs {
   Public reads, admin-only writes. `image` always comes back as a Cloudinary URL string — the `publicId` behind it never leaves the API.
+
+  Every write (create / update / toggle / delete) fires a background POST to the website's `/api/revalidate` **after** the response is sent, so the site drops its cached project data. It is fire-and-forget: a request here never fails because the website is down, and it is skipped entirely when `WEB_REVALIDATE_URL` / `REVALIDATE_SECRET` are unset.
 }

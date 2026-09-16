@@ -1,7 +1,7 @@
 meta {
   name: Update Project
   type: http
-  seq: 5
+  seq: 6
 }
 
 patch {
@@ -32,5 +32,15 @@ docs {
   | 200 | updated |
   | 401 | missing or expired token |
   | 404 | `NOT_FOUND` |
-  | 422 | `VALIDATION_ERROR` — e.g. an empty tech list |
+  | 409 | `DUPLICATE_KEY` — that `slug` belongs to another project |
+  | 422 | `VALIDATION_ERROR` — e.g. an empty `frontEndTech` |
+
+  Sending a link as `""` clears it. `backEndTech` may be `[]`; `frontEndTech` may
+  not, since every project has a frontend.
+
+  `slug` is editable but never moves on its own: renaming the title leaves the
+  existing URL alone, and sending `slug: ""` is a no-op rather than a reset.
+
+  `status` and `order` can be set here too, though **Toggle Published** is the
+  usual way to flip the gate.
 }

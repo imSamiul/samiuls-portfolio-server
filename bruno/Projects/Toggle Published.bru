@@ -1,0 +1,29 @@
+meta {
+  name: Toggle Published
+  type: http
+  seq: 10
+}
+
+patch {
+  url: {{baseUrl}}{{apiPrefix}}/project/updateStatus/{{projectId}}
+  body: none
+  auth: inherit
+}
+
+docs {
+  # Toggle Published
+
+  Admin only. Flips `status` between `draft` and `published` — no body, the
+  server reads the current value and inverts it in a single pipeline update.
+
+  This is the real publish gate. **Toggle Homepage** is only a display flag: a
+  draft stays off the site even with `showOnHomepage: true`.
+
+  `message` says which way it went, so the dashboard can show it verbatim.
+
+  | Status | Meaning |
+  | --- | --- |
+  | 200 | flipped; `data.status` is the new value |
+  | 401 | missing or expired token |
+  | 404 | `NOT_FOUND` |
+}

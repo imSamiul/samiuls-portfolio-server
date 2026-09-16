@@ -42,9 +42,9 @@ There is no seed and no roles. `ADMIN_EMAIL` is the only address that may sign u
 ```
 src/
   app.ts / server.ts / routes.ts
-  config/          # env (zod), db, cloudinary
+  config/          # env (zod), db, cloudinary, logger (pino)
   middleware/      # requireAuth, validate, rateLimit, upload, errorHandler, requestLog
-  models/          # Project, User, schemaOptions, index
+  models/          # Project, User, SiteAsset, schemaOptions, index
   modules/<domain>/
     *.routes.ts
     *.controller.ts
@@ -89,6 +89,57 @@ src/
 4. Throw `ApiError` (status + machine `code`); `errorHandler` formats the envelope
 5. Success: `sendSuccess(res, message, data, status?)`
 
+### Read paths
+
+Every read is `.lean()` — nothing needs a hydrated document.
+
+Lists and single entities have **separate serializers**: `toProjectSummary` (list) and `toProjectDetail` (one project). Lists project `projectDetails` away with `.select('-projectDetails')` because no card renders it, and the website hands list data to a client component — so anything in a list payload is also inlined into the page HTML. Keep list payloads to what a card draws; put anything long behind the by-id route.
+
+Indexes must match the sort, not just the filter. Both public lists filter on `status` and sort `{ order: 1, createdAt: -1 }`, so the indexes carry every field in that order: `{ status: 1, showOnHomepage: 1, order: 1, createdAt: -1 }` for the homepage and `{ status: 1, order: 1, createdAt: -1 }` for the full list. Adding a field to a filter or a sort means revisiting these — a prefix mismatch silently turns the sort into an in-memory one.
+
+The dashboard list is deliberately left unindexed: it is admin-only, unfiltered, and this collection is small enough that another index would cost more than it saves.
+
+Prefer one round trip over read-modify-write — `toggleHomepage` and `toggleStatus` flip their field with a pipeline update (`$not` / `$cond`, `updatePipeline: true`), not `findById` + `save()`.
+
+### Logging
+
+`config/logger.ts` owns the only pino instance. **Nothing outside `src/scripts/` uses `console`** — the scripts are CLIs whose output is meant for a human, everything else is a log line someone has to search on Koyeb.
+
+`requestLog` is `pino-http`, and it gives every request an id: whatever the proxy sent in `x-request-id`, otherwise a fresh `randomUUID()`. The id goes back out as a response header and is attached to every line logged during that request, so an admin can quote the id from a broken page and land on the exact request.
+
+Log through `req.log` inside a request and `logger` outside one. `req.log` is what carries the id; the bare `logger` does not. `errorHandler` logs 500s through `req.log` with `{ err: error }` — pino's `err` key is what serialises a stack, a plain property does not.
+
+Output is JSON lines in every environment. No `pino-pretty`: `tsx` runs this same source in the container, so a dev-only transport would still have to resolve there. Tests set the level to `silent` rather than disabling the middleware, so the code path under test is the real one.
+
+### Publishing and ordering
+
+`status` (`draft` | `published`) is the publish gate; `showOnHomepage` is only a display flag and must never be mistaken for one. New projects default to `draft`, so saving does not publish.
+
+Both public lists filter `status: 'published'`. The dashboard needs drafts, so it gets its own **authenticated** route, `getAllProjectsForDashboard` — a query param was rejected because the difference is who may see drafts, and that belongs in the route, not the query string.
+
+`order` is a plain ascending integer applied before `createdAt: -1`, so an older, stronger project can sit on top. No drag-and-drop: with this many projects a number field carries almost all the value.
+
+`status` defaults only apply to documents mongoose creates, so projects that predate the field read back as `undefined` and would vanish from the site. `pnpm backfill:publishing` fixes that and must run with the deploy.
+
+### Revalidation
+
+The website caches project data **indefinitely** (`revalidate: false` + tags), so it depends on being told when something changed. Every project write calls `revalidateProject(slug)` from `utils/revalidateWeb.ts`, which POSTs `{ tags: ['projects', 'project:<slug>'] }` to `WEB_REVALIDATE_URL` with `REVALIDATE_SECRET`.
+
+Two rules:
+
+- It runs in the **controller, after `sendSuccess`** — this is an outbound integration, not domain logic, and the response must not wait on it.
+- It is **fire-and-forget**: the promise is not awaited, failures are logged and swallowed. A write must never fail because the site is unreachable.
+
+Unset in development, so writes simply skip the call. **Required in production** — without it the site caches forever and never updates. The tag strings are a hand-maintained contract with the frontend's `projectServerApis.ts`; there is no shared package.
+
+### Slugs
+
+Projects are addressed publicly by `slug`, not by `_id`. It is derived from the title **once, at create time** (`deriveSlug`) and never moves on its own — a URL that is indexed and shared must survive a reworded title. An admin can still set it explicitly; the unique index is the final arbiter and a clash surfaces as 409 `DUPLICATE_KEY`.
+
+`slug` stays in the **summary** DTO: the website's sitemap and JSON-LD build project URLs out of list data.
+
+`getProjectBySlug/:slug` is a separate route from `getProjectById/:id` rather than one param accepting either. The id route validates its param as an ObjectId, so a slug sent there is rejected — and a polymorphic param schema would be worse than two routes. The dashboard keeps using ids; only the public site uses slugs.
+
 ### Auth
 
 - Bearer only, for now. `requireAuth` verifies the token and puts `{ id }` on `req.auth`
@@ -100,32 +151,60 @@ src/
 
 ### Images
 
-`multer.memoryStorage()` → `sharp().resize(1920, 1080).webp({ quality: 80 })` → Cloudinary; the document stores `image: { url, publicId }` and the serializer exposes only the URL. The resize uses sharp's default `fit: 'cover'`, so every image is cropped to 16:9 on purpose — the client relies on those fixed dimensions for `next/image`.
+`multer.memoryStorage()` → `sharp().resize(1920, 1080).webp({ quality: 80 })` → `cloudinary.uploader.upload_stream`; the document stores `image: { url, publicId }` and the serializer exposes only the URL. The buffer is streamed, not sent as a base64 data URI — that would inflate it by a third and hold the image in memory twice. The resize uses sharp's default `fit: 'cover'`, so every image is cropped to 16:9 on purpose — the client relies on those fixed dimensions for `next/image`.
 
 Deleting a project destroys its asset; a failed insert destroys the asset it just uploaded. Cloudinary keys are **optional** outside production so the API boots from a bare clone — anything that calls Cloudinary runs `assertCloudinaryConfigured()` first and answers 503.
+
+### Resume
+
+The PDF is a raw Cloudinary asset and its pointer is a `SiteAsset` document (`key: 'resume'`, `publicId`, `version`) — **not** an env var, so replacing the resume is a dashboard upload with no redeploy. `url` is deliberately not stored: `fl_attachment` is applied at delivery, so the URL is always rebuilt from `publicId + version`.
+
+`version` is the cache-busting mechanism. The public id is stable, so uploads pass `invalidate: true` and the stored version goes into the delivery URL — otherwise the CDN would keep handing out the previous PDF from an unchanged URL.
+
+Two things must not change: `GET /download` stays a **302** (streaming bytes through Node would burn Koyeb egress and memory and lose CDN range requests), and the asset stays `resource_type: 'raw'` (Cloudinary blocks PDF delivery for `image` assets by default).
+
+On the client this is a plain anchor. Never fetch it as a blob: that buffers the file in memory, discards the `Content-Disposition` filename, and makes the download depend on Cloudinary's CORS policy.
+
+### Contact
+
+`modules/contact/` has no model and no serializer — nothing is stored and nothing comes back but `null`. Mail goes out through Resend to `ADMIN_EMAIL` with `replyTo` set to the visitor, so replying from the inbox reaches them.
+
+Spam is handled with a **honeypot**, not a captcha: the form renders a hidden `website` field, and when it arrives filled the controller answers 200 and drops the message, so a bot cannot tell it failed. `contactLimiter` allows 5 requests per 15 minutes per IP because every accepted message costs an email.
+
+`RESEND_API_KEY` / `CONTACT_FROM_EMAIL` are optional outside production and the service answers 503 `MAIL_NOT_CONFIGURED` without them, mirroring Cloudinary. Without a verified Resend domain the only usable sender is `onboarding@resend.dev`, which is enough since it only mails the owner.
 
 ### API surface (`API_PREFIX`, default `/api/v1`)
 
 | Prefix | Notes |
 | --- | --- |
 | `/auth` | `signUp`, `login` → `{ user: { id, email }, token }` |
-| `/project` | public `getAllProjects`, `getProjectsForHomepage`, `getProjectById/:id`; admin `create` (multipart), `updateProject/:id`, `updateShowOnHomePage/:id`, `deleteProject/:id` |
-| `/resume` | `download` → 302 to the Cloudinary PDF (**not** enveloped) |
+| `/contact` | public `POST /` → mails `ADMIN_EMAIL`, returns `data: null` |
+| `/project` | public `getAllProjects`, `getProjectsForHomepage`, `getProjectBySlug/:slug`, `getProjectById/:id` (all published-only); admin `getAllProjectsForDashboard`, `create` (multipart), `updateProject/:id`, `updateStatus/:id`, `updateShowOnHomePage/:id`, `deleteProject/:id` |
+| `/resume` | public `download` → 302 to the Cloudinary PDF (**not** enveloped); admin `POST /` (multipart) replaces it |
 
 Health: `GET /health` (outside prefix). Success is `{ success, message, data }`, errors are `{ success, message, code, details? }`.
 
 ### Tests
 
-Vitest + Supertest + mongodb-memory-server. `vitest.config.ts` injects the test env, so the suite needs no `.env` file and no running Mongo. `src/test/helpers.ts` gives the supertest client, `url()` (prefixes `API_PREFIX`) and `createAdmin()`. Nothing reaches the network: paths that would call Cloudinary are covered at their guard instead of mocked.
+Vitest + Supertest + mongodb-memory-server. `vitest.config.ts` injects the test env, so the suite needs no `.env` file and no running Mongo. `src/test/helpers.ts` gives the supertest client, `url()` (prefixes `API_PREFIX`) and `createAdmin()`.
+
+Nothing reaches the network, but keep it that way deliberately:
+
+- Cloudinary **is** configured with dummy keys, only so `cloudinary.url()` can build delivery URLs (pure string work) and the resume redirect can be asserted. Never exercise an upload path in a test — it would hit the network instead of stopping at a guard.
+- Resend is mocked with `vi.mock('resend')`, so the contact tests assert the payload that would have been sent.
 
 ---
 
 ## Still open, in order
 
-1. Run `pnpm migrate:images` — existing documents still hold `image: { data: Buffer, contentType }`, so they serialise to an empty `image`.
-2. Run `pnpm upload:resume` and set `RESUME_PUBLIC_ID`; until then `/api/v1/resume/download` answers 503.
-3. Create the Koyeb service from the `Dockerfile` and delete the Vercel project.
-4. Auth to httpOnly cookies — **last**, and only when a task explicitly asks.
+1. Run `pnpm backfill:slugs` — `slug` is required and unique, and existing documents predate it. Run it **before** the first boot that calls `syncIndexes()`.
+2. Run `pnpm backfill:publishing` — `status` and `order` are required, and documents that predate them read back `undefined`, which the public lists filter out. **Ship this with the deploy or the site goes empty.**
+3. Run `pnpm migrate:images` — existing documents still hold `image: { data: Buffer, contentType }`, so they serialise to an empty `image`.
+4. Upload the resume once from the dashboard (`/dashboard/resume`); until then `/api/v1/resume/download` answers 503 `RESUME_NOT_CONFIGURED`.
+5. Set `RESEND_API_KEY`; until then `/api/v1/contact` answers 503 `MAIL_NOT_CONFIGURED`.
+6. Set `WEB_REVALIDATE_URL` and `REVALIDATE_SECRET` on both sides; the website caches project data indefinitely and will not update without them.
+7. Create the Koyeb service from the `Dockerfile` and delete the Vercel project.
+8. Auth to httpOnly cookies — **last**, and only when a task explicitly asks.
 
 ---
 

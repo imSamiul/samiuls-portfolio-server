@@ -1,7 +1,7 @@
 meta {
   name: Create Project
   type: http
-  seq: 4
+  seq: 5
 }
 
 post {
@@ -13,6 +13,9 @@ post {
 body:multipart-form {
   image: @file(/absolute/path/to/screenshot.png)
   title: Portfolio
+  slug: 
+  status: draft
+  order: 0
   summary: A short summary
   frontEndTech: ["Next.js","Tailwind"]
   backEndTech: ["Express","MongoDB"]
@@ -38,6 +41,15 @@ docs {
     picker to replace the placeholder path.
   - `frontEndTech` and `backEndTech` are **JSON array strings**, since multipart
     fields are all text.
+  - `status` defaults to **`draft`**, so creating a project does not publish it.
+    Flip it with **Toggle Published** once it reads well.
+  - `order` is an ascending integer, default 0; lower shows first.
+  - `slug` is optional. Leave it blank and it is derived from the title
+    (lowercased, non-alphanumerics collapsed to dashes), with a short suffix if
+    another project already owns that slug.
+  - `liveLink`, `frontEndRepo`, `backEndRepo` and `backEndTech` are **optional**:
+    a project can be frontend-only, undeployed, or have no public repo. Send them
+    blank (or `[]`) and they are left off the response rather than stored as `""`.
   - Multer parses the body first, then the zod schema validates it. Unknown
     fields are stripped rather than stored.
 
@@ -51,6 +63,7 @@ docs {
   | 400 | `IMAGE_REQUIRED` or `UNSUPPORTED_IMAGE_TYPE` |
   | 401 | missing or expired token |
   | 413 | `LIMIT_FILE_SIZE` — larger than 2 MB |
+  | 409 | `DUPLICATE_KEY` — that `slug` is taken |
   | 422 | `VALIDATION_ERROR` — includes a `details` array, one entry per field |
   | 503 | `CLOUDINARY_NOT_CONFIGURED` |
 }

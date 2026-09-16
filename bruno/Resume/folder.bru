@@ -7,5 +7,5 @@ auth {
 }
 
 docs {
-  The PDF is a raw Cloudinary asset, uploaded by `pnpm upload:resume`. Nothing is read off the container's filesystem.
+  The PDF is a raw Cloudinary asset. Its pointer lives in the `SiteAsset` collection (`key: "resume"`), not in an env var, so the owner replaces it from the dashboard with no redeploy. Nothing is read off the container's filesystem.
 }

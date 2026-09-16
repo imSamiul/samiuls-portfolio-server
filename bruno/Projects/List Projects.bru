@@ -10,12 +10,31 @@ get {
   auth: none
 }
 
+script:post-response {
+  if (res.status === 200 && res.body.data.length > 0) {
+    bru.setEnvVar('projectId', res.body.data[0].id);
+    bru.setEnvVar('projectSlug', res.body.data[0].slug);
+  }
+}
+
 docs {
   # List Projects
 
-  Public, newest first. Backs the dashboard project list.
+  Public: **published projects only**, sorted by `order` ascending and then
+  newest first. Drafts live behind **List All For Dashboard**.
 
-  Copy `data[0].id` → the `projectId` variable.
+  Fills the `projectId` and `projectSlug` variables from the first project, so
+  the by-id and by-slug requests work straight after this one.
+
+  `projectDetails` is **not** here: no list view renders the long write-up, and
+  the website inlines list payloads into its HTML, so it is projected away. Use
+  **Get Project** for it.
+
+  `slug` **is** here on purpose — the website's sitemap and JSON-LD build project
+  URLs out of list data.
+
+  Links a project does not have (`liveLink`, `frontEndRepo`, `backEndRepo`) are
+  left out rather than sent as `""`.
 
   **Example response**
 
@@ -27,13 +46,15 @@ docs {
       {
         "id": "…",
         "title": "…",
+        "slug": "bari-vara",
+        "status": "published",
+        "order": 0,
         "summary": "…",
         "frontEndTech": ["Next.js"],
         "backEndTech": ["Express"],
         "liveLink": "https://…",
         "frontEndRepo": "https://…",
         "backEndRepo": "https://…",
-        "projectDetails": "…",
         "showOnHomepage": true,
         "image": "https://res.cloudinary.com/…/portfolio/projects/….webp",
         "createdAt": "2026-01-01T00:00:00.000Z",
@@ -44,5 +65,6 @@ docs {
   ```
 
   An empty `image` means that document still holds the pre-Cloudinary buffer —
-  run `pnpm migrate:images`.
+  run `pnpm migrate:images`. A missing `slug` means `pnpm backfill:slugs` has not
+  been run.
 }

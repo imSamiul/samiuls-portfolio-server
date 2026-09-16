@@ -1,0 +1,47 @@
+meta {
+  name: Send Message
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}{{apiPrefix}}/contact
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "name": "Recruiter",
+    "email": "hiring@example.com",
+    "message": "We have a role that matches your background, can we talk?"
+  }
+}
+
+docs {
+  # Send Message
+
+  Public. Rate limited to **5 requests per 15 minutes per IP**, because every
+  accepted message costs an email.
+
+  | Field | Rule |
+  | --- | --- |
+  | `name` | 2–80 characters |
+  | `email` | must parse as an email; trimmed and lowercased before use |
+  | `message` | 20–2000 characters |
+  | `website` | honeypot, must be absent or blank |
+
+  ## Honeypot
+
+  The form renders `website` hidden, so a real visitor always leaves it blank.
+  Send it filled and the API answers **200 with the same message** but mails
+  nothing — a bot cannot tell the difference, so it has nothing to retry.
+
+  | Status | Meaning |
+  | --- | --- |
+  | 200 | accepted (or silently dropped as spam) |
+  | 422 | `VALIDATION_ERROR` — includes a `details` array |
+  | 429 | `TOO_MANY_REQUESTS` |
+  | 502 | `MAIL_SEND_FAILED` — Resend rejected it |
+  | 503 | `MAIL_NOT_CONFIGURED` — no `RESEND_API_KEY` / `CONTACT_FROM_EMAIL` |
+}
