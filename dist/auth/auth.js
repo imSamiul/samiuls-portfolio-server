@@ -15,28 +15,22 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const auth = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
+    const token = (_a = req.header('Authorization')) === null || _a === void 0 ? void 0 : _a.replace('Bearer ', '');
+    if (!token) {
+        res.status(401).json({ message: 'Token not provided' });
+        return;
+    }
+    // Missing secret is a server misconfiguration, not a bad request
+    if (!process.env.JWT_TOKEN) {
+        res.status(500).json({ message: 'JWT secret is not defined' });
+        return;
+    }
     try {
-        const token = (_a = req.header('Authorization')) === null || _a === void 0 ? void 0 : _a.replace('Bearer ', '');
-        if (!token) {
-            throw new Error('Token not provided');
-        }
-        if (!process.env.JWT_TOKEN) {
-            throw new Error('JWT secret is not defined');
-        }
-        const decoded = jsonwebtoken_1.default.verify(token, process.env.JWT_TOKEN); // Specify the structure if known
-        if (!decoded) {
-            throw new Error('Invalid token');
-        }
-        req.body.tokenData = decoded.id;
+        jsonwebtoken_1.default.verify(token, process.env.JWT_TOKEN);
         next();
     }
-    catch (error) {
-        let errorMessage = 'Authentication failed';
-        if (error instanceof Error) {
-            errorMessage = error.message;
-        }
-        res.status(500).json({ message: errorMessage });
-        console.log(error);
+    catch (_b) {
+        res.status(401).json({ message: 'Invalid or expired token' });
     }
 });
 exports.default = auth;

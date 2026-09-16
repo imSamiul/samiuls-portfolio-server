@@ -29,7 +29,6 @@ app.use(
     credentials: true, // Allow cookies, authorization headers, etc.
   }),
 );
-app.options('*', cors());
 
 // Middleware
 app.use(express.json());

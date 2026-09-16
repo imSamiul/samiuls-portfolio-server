@@ -26,6 +26,7 @@ const userSchema = new mongoose_1.default.Schema({
     },
     password: {
         type: String,
+        required: true,
         minlength: 6,
         trim: true,
     },
@@ -74,11 +75,11 @@ userSchema.statics.findByCredentials = function (email, password) {
     return __awaiter(this, void 0, void 0, function* () {
         const foundUser = yield this.findOne({ email });
         if (!foundUser) {
-            throw new Error('Incorrect credentials');
+            return null;
         }
         const isMatch = yield bcrypt_1.default.compare(password, foundUser.password);
         if (!isMatch) {
-            throw new Error('Incorrect credentials');
+            return null;
         }
         return foundUser;
     });

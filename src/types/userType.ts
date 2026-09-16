@@ -18,5 +18,5 @@ export type UserModelType = Model<UserType, object, UserMethodsType> & {
   findByCredentials(
     email: string,
     password: string,
-  ): Promise<HydratedDocument<UserType & UserMethodsType>>;
+  ): Promise<HydratedDocument<UserType & UserMethodsType> | null>;
 };

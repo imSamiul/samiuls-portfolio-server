@@ -12,7 +12,6 @@
     "add-build": "git add dist"
   },
   "pre-commit": [
-    "ts.check",
     "build",
     "add-build"
   ],
@@ -21,13 +20,14 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "bcrypt": "^5.1.1",
     "cors": "^2.8.5",
     "cross-env": "^7.0.3",
     "dotenv": "^16.4.5",
     "express": "^4.21.1",
+    "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.8.3",
     "multer": "1.4.5-lts.1",
-    "rimraf": "^6.0.1",
     "sharp": "^0.33.5"
   },
   "devDependencies": {
@@ -40,13 +40,12 @@
     "@types/node": "^22.10.0",
     "@typescript-eslint/eslint-plugin": "^8.16.0",
     "@typescript-eslint/parser": "^8.16.0",
-    "bcrypt": "^5.1.1",
     "eslint": "^9.15.0",
     "globals": "^15.12.0",
-    "jsonwebtoken": "^9.0.2",
     "nodemon": "^3.1.7",
     "pre-commit": "^1.2.2",
     "prettier": "^3.4.1",
+    "rimraf": "^6.0.1",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.7.2",
     "typescript-eslint": "^8.16.0"

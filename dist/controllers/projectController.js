@@ -104,7 +104,7 @@ function getProjectsForHomepage(req, res) {
 // Middleware to handle single image upload
 const upload = (0, multer_1.default)({
     storage: multer_1.default.memoryStorage(),
-    limits: { fileSize: 2 * 1024 * 1024 }, // Limit file size to 5MB
+    limits: { fileSize: 2 * 1024 * 1024 }, // Limit file size to 2MB
     fileFilter: (req, file, cb) => {
         // Allowed file types
         const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/jpg'];
@@ -148,15 +148,28 @@ function createProject(req, res) {
                 res.status(400).json({ message: 'Image is required' });
                 return;
             }
+            // Both arrive as JSON strings in the multipart body
+            let parsedFrontEndTech;
+            let parsedBackEndTech;
+            try {
+                parsedFrontEndTech = JSON.parse(frontEndTech);
+                parsedBackEndTech = JSON.parse(backEndTech);
+            }
+            catch (_a) {
+                res.status(400).json({
+                    message: 'frontEndTech and backEndTech must be valid JSON arrays',
+                });
+                return;
+            }
             // Resize image using sharp
             const resizedImageBuffer = yield (0, sharp_1.default)(req.file.buffer)
-                .resize(1920, 1080) // Resize to 800x600 (width x height)
+                .resize(1920, 1080) // Resize to 1920x1080 (width x height)
                 .toBuffer(); // Convert to buffer for storage
             const newProject = new project_model_1.default({
                 title,
                 summary,
-                frontEndTech: JSON.parse(frontEndTech), // Parse if array is sent as a string
-                backEndTech: JSON.parse(backEndTech), // Parse if array is sent as a string
+                frontEndTech: parsedFrontEndTech,
+                backEndTech: parsedBackEndTech,
                 liveLink,
                 frontEndRepo,
                 backEndRepo,
@@ -206,26 +219,34 @@ function updateShowOnHomePage(req, res) {
         }
     });
 }
+// Fields a client is allowed to change through updateProject
+const UPDATABLE_PROJECT_FIELDS = [
+    'title',
+    'summary',
+    'frontEndTech',
+    'backEndTech',
+    'liveLink',
+    'frontEndRepo',
+    'backEndRepo',
+    'projectDetails',
+    'showOnHomepage',
+];
 // PATCH: update project
 function updateProject(req, res) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             const { id } = req.params;
-            const { title, summary, frontEndTech, backEndTech, liveLink, frontEndRepo, backEndRepo, projectDetails, showOnHomepage, } = req.body;
             const project = yield project_model_1.default.findById(id);
             if (!project) {
                 res.status(404).json({ message: 'Project not found' });
                 return;
             }
-            project.title = title;
-            project.summary = summary;
-            project.frontEndTech = frontEndTech;
-            project.backEndTech = backEndTech;
-            project.liveLink = liveLink;
-            project.frontEndRepo = frontEndRepo;
-            project.backEndRepo = backEndRepo;
-            project.projectDetails = projectDetails;
-            project.showOnHomepage = showOnHomepage;
+            // Only touch the fields actually sent, so a partial PATCH keeps the rest
+            for (const field of UPDATABLE_PROJECT_FIELDS) {
+                if (field in req.body) {
+                    project.set(field, req.body[field]);
+                }
+            }
             yield project.save();
             res.status(200).json({ message: 'Project updated successfully' });
         }

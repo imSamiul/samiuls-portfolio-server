@@ -83,7 +83,7 @@ export async function getProjectsForHomepage(req: Request, res: Response) {
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 2 * 1024 * 1024 }, // Limit file size to 5MB
+  limits: { fileSize: 2 * 1024 * 1024 }, // Limit file size to 2MB
   fileFilter: (req, file, cb) => {
     // Allowed file types
     const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/jpg'];
@@ -147,16 +147,30 @@ export async function createProject(req: Request, res: Response) {
       res.status(400).json({ message: 'Image is required' });
       return;
     }
+
+    // Both arrive as JSON strings in the multipart body
+    let parsedFrontEndTech: string[];
+    let parsedBackEndTech: string[];
+    try {
+      parsedFrontEndTech = JSON.parse(frontEndTech);
+      parsedBackEndTech = JSON.parse(backEndTech);
+    } catch {
+      res.status(400).json({
+        message: 'frontEndTech and backEndTech must be valid JSON arrays',
+      });
+      return;
+    }
+
     // Resize image using sharp
     const resizedImageBuffer = await sharp(req.file.buffer)
-      .resize(1920, 1080) // Resize to 800x600 (width x height)
+      .resize(1920, 1080) // Resize to 1920x1080 (width x height)
       .toBuffer(); // Convert to buffer for storage
 
     const newProject = new Project({
       title,
       summary,
-      frontEndTech: JSON.parse(frontEndTech), // Parse if array is sent as a string
-      backEndTech: JSON.parse(backEndTech), // Parse if array is sent as a string
+      frontEndTech: parsedFrontEndTech,
+      backEndTech: parsedBackEndTech,
       liveLink,
       frontEndRepo,
       backEndRepo,
@@ -205,21 +219,23 @@ export async function updateShowOnHomePage(req: Request, res: Response) {
   }
 }
 
+// Fields a client is allowed to change through updateProject
+const UPDATABLE_PROJECT_FIELDS = [
+  'title',
+  'summary',
+  'frontEndTech',
+  'backEndTech',
+  'liveLink',
+  'frontEndRepo',
+  'backEndRepo',
+  'projectDetails',
+  'showOnHomepage',
+] as const;
+
 // PATCH: update project
 export async function updateProject(req: Request, res: Response) {
   try {
     const { id } = req.params;
-    const {
-      title,
-      summary,
-      frontEndTech,
-      backEndTech,
-      liveLink,
-      frontEndRepo,
-      backEndRepo,
-      projectDetails,
-      showOnHomepage,
-    } = req.body;
 
     const project = await Project.findById(id);
     if (!project) {
@@ -227,15 +243,12 @@ export async function updateProject(req: Request, res: Response) {
       return;
     }
 
-    project.title = title;
-    project.summary = summary;
-    project.frontEndTech = frontEndTech;
-    project.backEndTech = backEndTech;
-    project.liveLink = liveLink;
-    project.frontEndRepo = frontEndRepo;
-    project.backEndRepo = backEndRepo;
-    project.projectDetails = projectDetails;
-    project.showOnHomepage = showOnHomepage;
+    // Only touch the fields actually sent, so a partial PATCH keeps the rest
+    for (const field of UPDATABLE_PROJECT_FIELDS) {
+      if (field in req.body) {
+        project.set(field, req.body[field]);
+      }
+    }
     await project.save();
     res.status(200).json({ message: 'Project updated successfully' });
   } catch (error) {

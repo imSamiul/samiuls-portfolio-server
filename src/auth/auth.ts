@@ -2,32 +2,24 @@ import { NextFunction, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 
 const auth = async (req: Request, res: Response, next: NextFunction) => {
+  const token = req.header('Authorization')?.replace('Bearer ', '');
+
+  if (!token) {
+    res.status(401).json({ message: 'Token not provided' });
+    return;
+  }
+
+  // Missing secret is a server misconfiguration, not a bad request
+  if (!process.env.JWT_TOKEN) {
+    res.status(500).json({ message: 'JWT secret is not defined' });
+    return;
+  }
+
   try {
-    const token = req.header('Authorization')?.replace('Bearer ', '');
-
-    if (!token) {
-      throw new Error('Token not provided');
-    }
-
-    if (!process.env.JWT_TOKEN) {
-      throw new Error('JWT secret is not defined');
-    }
-
-    const decoded = jwt.verify(token, process.env.JWT_TOKEN) as { id: string }; // Specify the structure if known
-
-    if (!decoded) {
-      throw new Error('Invalid token');
-    }
-    req.body.tokenData = decoded.id;
-
+    jwt.verify(token, process.env.JWT_TOKEN);
     next();
-  } catch (error) {
-    let errorMessage = 'Authentication failed';
-    if (error instanceof Error) {
-      errorMessage = error.message;
-    }
-    res.status(500).json({ message: errorMessage });
-    console.log(error);
+  } catch {
+    res.status(401).json({ message: 'Invalid or expired token' });
   }
 };
 export default auth;

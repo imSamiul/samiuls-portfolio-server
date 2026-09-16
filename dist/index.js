@@ -28,7 +28,6 @@ app.use((0, cors_1.default)({
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'], // Allowed HTTP methods
     credentials: true, // Allow cookies, authorization headers, etc.
 }));
-app.options('*', (0, cors_1.default)());
 // Middleware
 app.use(express_1.default.json());
 // Connect to MongoDB
