@@ -2,45 +2,11 @@
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
-var _a;
 Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = __importDefault(require("express"));
-const dotenv_1 = __importDefault(require("dotenv"));
-const resumeRoutes_1 = __importDefault(require("./routes/resumeRoutes"));
-const authRoutes_1 = __importDefault(require("./routes/authRoutes"));
-const projectRoutes_1 = __importDefault(require("./routes/projectRoutes"));
-const mongoose_1 = __importDefault(require("./db/mongoose"));
-const cors_1 = __importDefault(require("cors"));
-// Load environment variables based on the current environment
-const env = ((_a = process.env.NODE_ENV) === null || _a === void 0 ? void 0 : _a.trim()) || 'development';
-console.log(`Environment: ${env}`);
-const envFile = env === 'production' ? '.env.production' : '.env.development';
-dotenv_1.default.config({ path: envFile });
-const app = (0, express_1.default)();
-const PORT = process.env.PORT || 3000;
-// Allow CORS
-app.use((0, cors_1.default)({
-    origin: [
-        'http://192.168.0.174:3002',
-        'https://samiul3041.vercel.app', // Production frontend
-        'http://localhost:3002',
-    ], // Specify the allowed origin (React app)
-    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'], // Allowed HTTP methods
-    credentials: true, // Allow cookies, authorization headers, etc.
-}));
-// Middleware
-app.use(express_1.default.json());
-// Connect to MongoDB
-(0, mongoose_1.default)();
-// Routes
-app.get('/', (req, res) => {
-    res.send(`Hello, World! Environment: ${process.env.NODE_ENV}`);
-});
-app.use('/api/resume', resumeRoutes_1.default);
-app.use('/api/auth', authRoutes_1.default);
-app.use('/api/project', projectRoutes_1.default);
-// Start the server
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
-});
-exports.default = app;
+// Vercel's build entry points at dist/index.js and expects the express app to
+// be the default export. Delete this file together with vercel.json once the
+// API runs on Koyeb, where src/server.ts is the entry point.
+const app_1 = __importDefault(require("./app"));
+const db_1 = __importDefault(require("./config/db"));
+void (0, db_1.default)();
+exports.default = app_1.default;

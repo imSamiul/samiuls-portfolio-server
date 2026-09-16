@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import { env } from '../config/env';
 import { UserMethodsType, UserModelType, UserType } from '../types/userType';
 
 // Define base UserType schema
@@ -23,14 +24,6 @@ const userSchema = new mongoose.Schema<
       minlength: 6,
       trim: true,
     },
-    tokens: [
-      {
-        token: {
-          type: String,
-          required: true,
-        },
-      },
-    ],
   },
   {
     timestamps: true,
@@ -46,20 +39,9 @@ userSchema.pre('save', async function hashPassword(next) {
   next();
 });
 userSchema.methods.generateAuthToken = async function generateAuthToken() {
-  // ... rest of your logic to generate and store the token (uncommented)
-  const secretKey = process.env.JWT_TOKEN;
-
-  if (!secretKey) {
-    throw new Error('Secret key is not provided');
-  }
-  const token = jwt.sign({ id: this.id.toString() }, secretKey, {
+  return jwt.sign({ id: this.id.toString() }, env.JWT_TOKEN, {
     expiresIn: '7d',
   });
-
-  this.tokens = this.tokens.concat({ token });
-  await this.save();
-
-  return token;
 };
 
 userSchema.methods.toJSON = function toJSON() {

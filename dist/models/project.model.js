@@ -41,11 +41,13 @@ const projectSchema = new mongoose_1.Schema({
         default: false,
     },
     image: {
-        data: Buffer,
-        contentType: String,
+        url: { type: String, required: true },
+        publicId: { type: String, required: true },
     },
 }, {
     timestamps: true,
 });
+// The homepage filters on this flag on every render.
+projectSchema.index({ showOnHomepage: 1 });
 const Project = (0, mongoose_1.model)('Project', projectSchema);
 exports.default = Project;

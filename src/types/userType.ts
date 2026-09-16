@@ -4,7 +4,6 @@ export type UserType = Document & {
   _id?: mongoose.Types.ObjectId;
   email: string;
   password: string;
-  tokens: { token: string }[];
 };
 
 export type UserMethodsType = UserType & {

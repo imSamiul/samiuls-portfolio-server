@@ -42,14 +42,17 @@ const projectSchema = new Schema<ProjectType>(
       default: false,
     },
     image: {
-      data: Buffer,
-      contentType: String,
+      url: { type: String, required: true },
+      publicId: { type: String, required: true },
     },
   },
   {
     timestamps: true,
   },
 );
+
+// The homepage filters on this flag on every render.
+projectSchema.index({ showOnHomepage: 1 });
 
 const Project = model<ProjectType>('Project', projectSchema);
 export default Project;
