@@ -27,10 +27,11 @@ samiuls-portfolio-server   Express 5 + Mongoose 9 + TypeScript (ESM, NodeNext) �
 2. **Surgical diffs** — only touch what the task needs; no drive-by refactors.
 3. **No secrets** in commits. `.env.development` is gitignored; production values live on Koyeb.
 4. **Errors:** throw `ApiError` (or its statics: `ApiError.notFound(...)`) from services; `middleware/errorHandler.ts` formats every one of them. Express 5 forwards rejected promises on its own — **do not** add an `asyncHandler` wrapper or a try/catch that only re-sends the error.
-5. **Validation:** zod schema in `src/shared/schemas` + the `validate()` middleware, which `.parse()`s and replaces the request section. Unknown body keys are stripped, which doubles as the mass-assignment whitelist — never hand-roll a field list in a controller. A failure throws `ZodError`, which `errorHandler` turns into a 422 with per-field details.
-6. **Type-only imports** use `import type` (`@typescript-eslint/consistent-type-imports` is an error), and relative imports carry the **`.js` extension** because the package is ESM/NodeNext.
-7. `no-console` is a lint error. Only `server.ts`, `requestLog.ts`, `errorHandler.ts` and the scripts disable it.
-8. Every changed line should trace back to the request.
+5. **Responses:** every success goes through `sendSuccess(res, message, data, status?)`, which emits `{ success: true, message, data }`. Never call `res.json()` with a bare payload, and never invent a second envelope. Serializers return `id`, never `_id`.
+6. **Validation:** zod schema in `src/shared/schemas` + the `validate()` middleware, which `.parse()`s and replaces the request section. Unknown body keys are stripped, which doubles as the mass-assignment whitelist — never hand-roll a field list in a controller. A failure throws `ZodError`, which `errorHandler` turns into a 422 with per-field details.
+7. **Type-only imports** use `import type` (`@typescript-eslint/consistent-type-imports` is an error), and relative imports carry the **`.js` extension** because the package is ESM/NodeNext.
+8. `no-console` is a lint error. Only `server.ts`, `requestLog.ts`, `errorHandler.ts` and the scripts disable it.
+9. Every changed line should trace back to the request.
 
 ---
 
@@ -59,6 +60,7 @@ src/
   scripts/                 # one-off: migrateProjectImagesToCloudinary, uploadResume
   test/                    # setup.ts (mongodb-memory-server) + helpers.ts (supertest client)
   types/express.d.ts       # req.auth
+  utils/                   # ApiError, response.ts (sendSuccess)
 ```
 
 Every module is `<domain>.routes.ts` → `<domain>.controller.ts` → `<domain>.service.ts` → `<domain>.serializer.ts`, with `<domain>.test.ts` beside them. Routers, handlers and classes are **named exports**; there are no default exports.
@@ -71,11 +73,10 @@ Domains: `projects` · `auth` · `resume`
 
 ## Still open, in order
 
-1. **`sendSuccess` envelope + `id` instead of `_id` + the `/api/v1` prefix.** All three change every payload the client reads, so they land in one commit **together with** the client change — never before.
-2. Run the image data migration: existing documents still hold `image: { data: Buffer, contentType }` (see below).
-3. Upload the resume PDF (`pnpm upload:resume`) and set `RESUME_PUBLIC_ID`. Until then `/api/resume/download` answers 503.
-4. Create the Koyeb service from the `Dockerfile` and delete the Vercel project.
-5. Auth to httpOnly cookies — **last**, and only when a task explicitly asks.
+1. Run the image data migration: existing documents still hold `image: { data: Buffer, contentType }` (see below). Until then every project serialises to an empty `image`.
+2. Upload the resume PDF (`pnpm upload:resume`) and set `RESUME_PUBLIC_ID`. Until then `/api/v1/resume/download` answers 503.
+3. Create the Koyeb service from the `Dockerfile` and delete the Vercel project.
+4. Auth to httpOnly cookies — **last**, and only when a task explicitly asks.
 
 ---
 
@@ -129,22 +130,22 @@ Vercel is gone: `vercel.json`, the committed `dist/`, `src/index.ts` and the `pr
 
 ## API contract
 
-Mounted under `env.API_PREFIX`, which is `/api` today; `/api/v1` is step 1 above.
+Mounted under `env.API_PREFIX`, which defaults to `/api/v1`.
 
-| Method | Path | Auth | Notes |
+| Method | Path | Auth | `data` |
 | --- | --- | --- | --- |
-| GET | `/api/project/getAllProjects` | – | newest first; `image` is a Cloudinary URL |
-| GET | `/api/project/getProjectById/:id` | – | 404 when missing, 422 on a malformed id |
-| GET | `/api/project/getProjectsForHomepage` | – | `showOnHomepage: true` only |
-| POST | `/api/project/create` | Bearer | multipart, file field `image`, `frontEndTech`/`backEndTech` as JSON strings, max 2 MB, jpeg/jpg/png |
-| PATCH | `/api/project/updateShowOnHomePage/:id` | Bearer | toggles the flag |
-| PATCH | `/api/project/updateProject/:id` | Bearer | JSON; partial. Unknown keys (`_id`, `image`, timestamps) are stripped by the schema |
-| DELETE | `/api/project/deleteProject/:id` | Bearer | also destroys the Cloudinary asset |
-| POST | `/api/auth/login` | – | `{ user: { _id, email }, token }`; 401 on bad credentials |
-| POST | `/api/auth/signUp` | – | 201; 409 on duplicate, 422 on validation |
-| GET | `/api/resume/download` | – | 302 to the Cloudinary PDF; 503 until `RESUME_PUBLIC_ID` is set |
+| GET | `/api/v1/project/getAllProjects` | – | project array, newest first; `image` is a Cloudinary URL |
+| GET | `/api/v1/project/getProjectById/:id` | – | one project; 404 when missing, 422 on a malformed id |
+| GET | `/api/v1/project/getProjectsForHomepage` | – | `showOnHomepage: true` only |
+| POST | `/api/v1/project/create` | Bearer | the created project. Multipart, file field `image`, `frontEndTech`/`backEndTech` as JSON strings, max 2 MB, jpeg/jpg/png |
+| PATCH | `/api/v1/project/updateShowOnHomePage/:id` | Bearer | the project with the flag flipped |
+| PATCH | `/api/v1/project/updateProject/:id` | Bearer | the updated project. JSON, partial; unknown keys (`id`, `image`, timestamps) are stripped by the schema |
+| DELETE | `/api/v1/project/deleteProject/:id` | Bearer | `null`; also destroys the Cloudinary asset |
+| POST | `/api/v1/auth/login` | – | `{ user: { id, email }, token }`; 401 on bad credentials |
+| POST | `/api/v1/auth/signUp` | – | same, 201; 409 on duplicate, 422 on validation |
+| GET | `/api/v1/resume/download` | – | 302 to the Cloudinary PDF (not an envelope); 503 until `RESUME_PUBLIC_ID` is set |
 
-Success payloads are still bare arrays/objects. Errors are `{ success: false, message, code, details? }` — the client reads `error.response.data.message`, so keep that key.
+Success: `{ success: true, message, data }`. Errors: `{ success: false, message, code, details? }`. Every project carries `id`, never `_id`. The client reads `data` and `error.response.data.message`, so keep both keys.
 
 ---
 
@@ -161,7 +162,7 @@ Declared and validated in `src/config/env.ts`. Import `env` from there — never
 | `CLOUDINARY_CLOUD_NAME` / `_API_KEY` / `_API_SECRET` | optional in dev/test, required in production |
 | `RESUME_PUBLIC_ID` | printed by `pnpm upload:resume` |
 | `PORT` | defaults to 4000; the host injects its own |
-| `API_PREFIX` | defaults to `/api` |
+| `API_PREFIX` | defaults to `/api/v1` |
 | `JWT_TOKEN_TTL_DAYS` | defaults to 7 |
 | `NODE_ENV` | `development` \| `test` \| `production` |
 
@@ -203,7 +204,8 @@ Health check: `GET /health`.
 - Do not add Redis, OTP flows, or refresh-token rotation
 - Do not write image bytes into MongoDB, or read either the images or the resume off the filesystem
 - Do not add `asyncHandler` or a controller `try/catch` that only forwards the error — Express 5 already does it
-- Do not return a Mongoose document straight from a controller — go through the module's serializer
+- Do not return a Mongoose document straight from a controller — go through the module's serializer and `sendSuccess`
+- Do not expose `_id` — serializers emit `id`
 - Do not read `process.env` outside `src/config/env.ts`
 - Do not hand-write `res.status(500)` in a controller — throw `ApiError` and let `errorHandler` answer
 - Do not use default exports, and do not drop the `.js` extension from a relative import

@@ -24,14 +24,17 @@ function seedProject(overrides: Partial<ProjectAttributes> = {}) {
 }
 
 describe('project reads', () => {
-  it('serialises the image down to its URL', async () => {
-    await seedProject();
+  it('serialises the image down to its URL and _id to id', async () => {
+    const project = await seedProject();
 
     const response = await api.get(url('/project/getAllProjects')).expect(200);
 
-    expect(response.body).toHaveLength(1);
-    expect(response.body[0].image).toBe(IMAGE_URL);
-    expect(response.body[0].publicId).toBeUndefined();
+    expect(response.body.success).toBe(true);
+    expect(response.body.data).toHaveLength(1);
+    expect(response.body.data[0].id).toBe(String(project._id));
+    expect(response.body.data[0]._id).toBeUndefined();
+    expect(response.body.data[0].image).toBe(IMAGE_URL);
+    expect(response.body.data[0].publicId).toBeUndefined();
   });
 
   it('only returns flagged projects for the homepage', async () => {
@@ -42,13 +45,15 @@ describe('project reads', () => {
       .get(url('/project/getProjectsForHomepage'))
       .expect(200);
 
-    expect(response.body.map((project: { title: string }) => project.title)).toEqual(
-      ['Featured'],
-    );
+    expect(
+      response.body.data.map((project: { title: string }) => project.title),
+    ).toEqual(['Featured']);
   });
 
   it('rejects a malformed id before touching the database', async () => {
-    const response = await api.get(url('/project/getProjectById/nope')).expect(422);
+    const response = await api
+      .get(url('/project/getProjectById/nope'))
+      .expect(422);
 
     expect(response.body.code).toBe('VALIDATION_ERROR');
   });
@@ -83,8 +88,8 @@ describe('project writes', () => {
       .send({ title: 'Renamed' })
       .expect(200);
 
-    expect(response.body.title).toBe('Renamed');
-    expect(response.body.summary).toBe('A short summary');
+    expect(response.body.data.title).toBe('Renamed');
+    expect(response.body.data.summary).toBe('A short summary');
   });
 
   it('flips the homepage flag', async () => {
@@ -96,7 +101,8 @@ describe('project writes', () => {
       .set('Authorization', bearer(token))
       .expect(200);
 
-    expect(response.body.showOnHomepage).toBe(true);
+    expect(response.body.data.showOnHomepage).toBe(true);
+    expect(response.body.message).toBe('Project shown on the homepage');
   });
 
   it('rejects an empty tech list', async () => {

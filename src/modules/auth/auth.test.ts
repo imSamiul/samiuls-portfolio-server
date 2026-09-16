@@ -12,9 +12,9 @@ describe('sign up', () => {
       .send({ email: adminEmail, password: ADMIN_PASSWORD })
       .expect(201);
 
-    expect(response.body.token).toBeTypeOf('string');
-    expect(response.body.user.email).toBe(adminEmail);
-    expect(response.body.user.password).toBeUndefined();
+    expect(response.body.data.token).toBeTypeOf('string');
+    expect(response.body.data.user.email).toBe(adminEmail);
+    expect(response.body.data.user.password).toBeUndefined();
   });
 
   it('turns away any other address', async () => {
@@ -47,7 +47,7 @@ describe('login', () => {
       .send({ email: adminEmail, password: ADMIN_PASSWORD })
       .expect(200);
 
-    expect(response.body.token).toBeTypeOf('string');
+    expect(response.body.data.token).toBeTypeOf('string');
   });
 
   it('rejects the wrong password', async () => {

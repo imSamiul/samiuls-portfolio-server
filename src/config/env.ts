@@ -23,7 +23,7 @@ const envSchema = z
       .enum(['development', 'test', 'production'])
       .default('development'),
     PORT: z.coerce.number().int().positive().default(4000),
-    API_PREFIX: z.string().default('/api'),
+    API_PREFIX: z.string().default('/api/v1'),
 
     DB_URL: z.string().min(1),
 

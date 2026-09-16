@@ -8,6 +8,7 @@ import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { apiLimiter } from './middleware/rateLimit.js';
 import { requestLog } from './middleware/requestLog.js';
 import { routes } from './routes.js';
+import { sendSuccess } from './utils/response.js';
 
 export function createApp() {
   const app = express();
@@ -25,7 +26,7 @@ export function createApp() {
   // Outside the API prefix so the platform health check never counts against
   // the rate limit.
   app.get('/health', (_req, res) => {
-    res.json({ status: 'ok', uptime: process.uptime() });
+    sendSuccess(res, 'ok', { uptime: process.uptime() });
   });
 
   app.use(env.API_PREFIX, apiLimiter, routes);
