@@ -1,22 +1,20 @@
-import { NextFunction, Request, Response } from 'express';
-import jwt from 'jsonwebtoken';
-import { env } from '../config/env';
-import ApiError from '../utils/ApiError';
+import type { RequestHandler } from 'express';
 
-const requireAuth = (req: Request, _res: Response, next: NextFunction) => {
-  const token = req.header('Authorization')?.replace('Bearer ', '');
+import { verifyAuthToken } from '../modules/auth/tokens.js';
+import { ApiError } from '../utils/ApiError.js';
+
+export const requireAuth: RequestHandler = (req, _res, next) => {
+  const token = req.header('authorization')?.replace('Bearer ', '');
 
   if (!token) {
-    next(new ApiError(401, 'Token not provided'));
+    next(ApiError.unauthorized('Sign in to continue'));
     return;
   }
 
   try {
-    jwt.verify(token, env.JWT_TOKEN);
+    req.auth = { id: verifyAuthToken(token).id };
     next();
   } catch {
-    next(new ApiError(401, 'Invalid or expired token'));
+    next(ApiError.unauthorized('Session expired', 'ACCESS_TOKEN_INVALID'));
   }
 };
-
-export default requireAuth;

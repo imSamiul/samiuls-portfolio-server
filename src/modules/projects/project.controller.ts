@@ -1,26 +1,35 @@
-import ApiError from '../../utils/ApiError';
-import asyncHandler from '../../utils/asyncHandler';
-import { serializeProject } from './project.serializer';
-import * as projectService from './project.service';
+import type { CreateProjectInput, UpdateProjectInput } from '#shared';
+import type { RequestHandler } from 'express';
 
-export const getProjects = asyncHandler(async (_req, res) => {
-  const projects = await projectService.findProjects();
-  res.status(200).json(projects.map(serializeProject));
-});
+import { ApiError } from '../../utils/ApiError.js';
+import { toProjectDto } from './project.serializer.js';
+import * as projectService from './project.service.js';
 
-export const getHomepageProjects = asyncHandler(async (_req, res) => {
-  const projects = await projectService.findHomepageProjects();
-  res.status(200).json(projects.map(serializeProject));
-});
+export const list: RequestHandler = async (_req, res) => {
+  const projects = await projectService.listProjects();
 
-export const getProjectById = asyncHandler(async (req, res) => {
-  const project = await projectService.findProjectById(req.params.id);
-  res.status(200).json(serializeProject(project));
-});
+  res.json(projects.map(toProjectDto));
+};
 
-export const createProject = asyncHandler(async (req, res) => {
+export const listForHomepage: RequestHandler = async (_req, res) => {
+  const projects = await projectService.listHomepageProjects();
+
+  res.json(projects.map(toProjectDto));
+};
+
+export const detail: RequestHandler<{ id: string }> = async (req, res) => {
+  const project = await projectService.getProject(req.params.id);
+
+  res.json(toProjectDto(project));
+};
+
+export const create: RequestHandler<
+  unknown,
+  unknown,
+  CreateProjectInput
+> = async (req, res) => {
   if (!req.file) {
-    throw new ApiError(400, 'Image is required');
+    throw ApiError.badRequest('A project image is required', 'IMAGE_REQUIRED');
   }
 
   const project = await projectService.createProject(
@@ -28,23 +37,30 @@ export const createProject = asyncHandler(async (req, res) => {
     req.file.buffer,
   );
 
-  res.status(201).json({
-    message: 'Project created successfully',
-    project: serializeProject(project),
-  });
-});
+  res.status(201).json(toProjectDto(project));
+};
 
-export const toggleShowOnHomepage = asyncHandler(async (req, res) => {
-  await projectService.toggleShowOnHomepage(req.params.id);
-  res.status(200).json({ message: 'Project updated successfully' });
-});
+export const update: RequestHandler<
+  { id: string },
+  unknown,
+  UpdateProjectInput
+> = async (req, res) => {
+  const project = await projectService.updateProject(req.params.id, req.body);
 
-export const updateProject = asyncHandler(async (req, res) => {
-  await projectService.updateProject(req.params.id, req.body);
-  res.status(200).json({ message: 'Project updated successfully' });
-});
+  res.json(toProjectDto(project));
+};
 
-export const deleteProject = asyncHandler(async (req, res) => {
+export const toggleHomepage: RequestHandler<{ id: string }> = async (
+  req,
+  res,
+) => {
+  const project = await projectService.toggleHomepage(req.params.id);
+
+  res.json(toProjectDto(project));
+};
+
+export const remove: RequestHandler<{ id: string }> = async (req, res) => {
   await projectService.deleteProject(req.params.id);
-  res.status(200).json({ message: 'Project deleted successfully' });
-});
+
+  res.json({ message: 'Project deleted' });
+};

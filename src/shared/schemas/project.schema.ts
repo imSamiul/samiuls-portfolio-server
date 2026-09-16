@@ -2,8 +2,10 @@ import { z } from 'zod';
 
 const techListSchema = z.array(z.string().trim().min(1)).min(1);
 
-// Create arrives as multipart, so every field is text and the tech lists come
-// in as JSON strings.
+/**
+ * Create arrives as multipart, so every field is text and the tech lists come in
+ * as JSON strings.
+ */
 const techListFromText = z
   .string()
   .transform((value, ctx) => {
@@ -34,8 +36,10 @@ export const createProjectSchema = z.object({
   showOnHomepage: booleanFromText.default(false),
 });
 
-// Update is sent as JSON, so the tech lists are real arrays here. No defaults:
-// a missing key must stay untouched rather than being reset.
+/**
+ * Update is sent as JSON, so the tech lists are real arrays here. No defaults: a
+ * missing key must stay untouched rather than being reset.
+ */
 export const updateProjectSchema = z.object({
   title: requiredText.optional(),
   summary: requiredText.optional(),

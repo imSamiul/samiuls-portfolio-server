@@ -1,33 +1,77 @@
 import dotenv from 'dotenv';
 import { z } from 'zod';
 
-// Local runs read a dotenv file; on a hosted runtime the platform injects the
-// values and this call is a no-op.
-const nodeEnv = process.env.NODE_ENV?.trim() || 'development';
-dotenv.config({
-  path: nodeEnv === 'production' ? '.env.production' : '.env.development',
-});
+/**
+ * Local: `.env.development` (gitignored). Hosted runtimes inject process.env —
+ * dotenv does not override existing keys, and a missing file is fine.
+ */
+dotenv.config({ path: '.env.development' });
 
-const envSchema = z.object({
-  NODE_ENV: z.enum(['development', 'production']),
-  PORT: z.coerce.number().int().positive().default(3000),
-  DB_URL: z.string().min(1),
-  JWT_TOKEN: z.string().min(1),
-  CLOUDINARY_CLOUD_NAME: z.string().min(1),
-  CLOUDINARY_API_KEY: z.string().min(1),
-  CLOUDINARY_API_SECRET: z.string().min(1),
-});
+/**
+ * Cloudinary is optional in development and test so the API can boot from a
+ * bare clone, but mandatory in production where every image lives there.
+ */
+const productionRequired = [
+  'CLOUDINARY_CLOUD_NAME',
+  'CLOUDINARY_API_KEY',
+  'CLOUDINARY_API_SECRET',
+] as const;
 
-const parsed = envSchema.safeParse({ ...process.env, NODE_ENV: nodeEnv });
+const envSchema = z
+  .object({
+    NODE_ENV: z
+      .enum(['development', 'test', 'production'])
+      .default('development'),
+    PORT: z.coerce.number().int().positive().default(4000),
+    API_PREFIX: z.string().default('/api'),
+
+    DB_URL: z.string().min(1),
+
+    JWT_TOKEN: z.string().min(1),
+    JWT_TOKEN_TTL_DAYS: z.coerce.number().int().positive().default(7),
+
+    CORS_ORIGIN: z.string().default('http://localhost:3002'),
+
+    // The dashboard has exactly one account; the gate used to be hardcoded in
+    // the auth controller.
+    ADMIN_EMAIL: z.string().min(1),
+
+    CLOUDINARY_CLOUD_NAME: z.string().optional(),
+    CLOUDINARY_API_KEY: z.string().optional(),
+    CLOUDINARY_API_SECRET: z.string().optional(),
+
+    // Printed by `pnpm upload:resume`; without it the resume route answers 503.
+    RESUME_PUBLIC_ID: z.string().optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.NODE_ENV !== 'production') return;
+
+    for (const key of productionRequired) {
+      if (!value[key]) {
+        ctx.addIssue({
+          code: 'custom',
+          path: [key],
+          message: `${key} is required when NODE_ENV=production`,
+        });
+      }
+    }
+  });
+
+const parsed = envSchema.safeParse(process.env);
 
 if (!parsed.success) {
-  // Fail at boot naming the offending variables, instead of crashing somewhere
-  // inside a request later on.
-  const details = parsed.error.issues
-    .map((issue) => `  ${issue.path.join('.')}: ${issue.message}`)
+  const issues = parsed.error.issues
+    .map((issue) => `  - ${issue.path.join('.') || '(root)'}: ${issue.message}`)
     .join('\n');
-  console.error(`Invalid environment configuration:\n${details}`);
-  process.exit(1);
+
+  throw new Error(`Invalid environment configuration:\n${issues}`);
 }
 
 export const env = parsed.data;
+
+export const isProduction = env.NODE_ENV === 'production';
+export const isTest = env.NODE_ENV === 'test';
+
+export const corsOrigins = env.CORS_ORIGIN.split(',').map((origin) =>
+  origin.trim(),
+);

@@ -1,12 +1,11 @@
 import { Router } from 'express';
-import projectRoutes from './modules/projects/project.routes';
-import authRoutes from './routes/authRoutes';
-import resumeRoutes from './routes/resumeRoutes';
 
-const router = Router();
+import { authRoutes } from './modules/auth/auth.routes.js';
+import { projectRoutes } from './modules/projects/project.routes.js';
+import { resumeRoutes } from './modules/resume/resume.routes.js';
 
-router.use('/resume', resumeRoutes);
-router.use('/auth', authRoutes);
-router.use('/project', projectRoutes);
+export const routes = Router();
 
-export default router;
+routes.use('/auth', authRoutes);
+routes.use('/project', projectRoutes);
+routes.use('/resume', resumeRoutes);

@@ -1,52 +1,52 @@
-import express from 'express';
-import requireAuth from '../../middleware/requireAuth';
-import { uploadProjectImage } from '../../middleware/upload';
-import validate from '../../middleware/validate';
-import { objectIdParamsSchema } from '../../shared/schemas/common.schema';
 import {
   createProjectSchema,
+  objectIdParamsSchema,
   updateProjectSchema,
-} from '../../shared/schemas/project.schema';
-import * as projectController from './project.controller';
+} from '#shared';
+import { Router } from 'express';
 
-const router = express.Router();
+import { requireAuth } from '../../middleware/requireAuth.js';
+import { uploadProjectImage } from '../../middleware/upload.js';
+import { validate } from '../../middleware/validate.js';
+import * as projectController from './project.controller.js';
 
-// Paths are kept verbatim from the pre-migration API so the client keeps
-// working until both repos move to /api/v1 together.
-router.get('/getAllProjects', projectController.getProjects);
-router.get('/getProjectsForHomepage', projectController.getHomepageProjects);
-router.get(
+export const projectRoutes = Router();
+
+projectRoutes.get('/getAllProjects', projectController.list);
+projectRoutes.get('/getProjectsForHomepage', projectController.listForHomepage);
+projectRoutes.get(
   '/getProjectById/:id',
   validate({ params: objectIdParamsSchema }),
-  projectController.getProjectById,
+  projectController.detail,
 );
 
-router.post(
+// uploadProjectImage runs first: it is what parses the multipart body the
+// schema then validates.
+projectRoutes.post(
   '/create',
   requireAuth,
   uploadProjectImage,
   validate({ body: createProjectSchema }),
-  projectController.createProject,
+  projectController.create,
 );
 
-router.patch(
+projectRoutes.patch(
   '/updateShowOnHomePage/:id',
   requireAuth,
   validate({ params: objectIdParamsSchema }),
-  projectController.toggleShowOnHomepage,
+  projectController.toggleHomepage,
 );
-router.patch(
+
+projectRoutes.patch(
   '/updateProject/:id',
   requireAuth,
   validate({ params: objectIdParamsSchema, body: updateProjectSchema }),
-  projectController.updateProject,
+  projectController.update,
 );
 
-router.delete(
+projectRoutes.delete(
   '/deleteProject/:id',
   requireAuth,
   validate({ params: objectIdParamsSchema }),
-  projectController.deleteProject,
+  projectController.remove,
 );
-
-export default router;

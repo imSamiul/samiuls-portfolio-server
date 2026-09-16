@@ -1,21 +1,15 @@
-import { Types } from 'mongoose';
-import { ProjectType } from '../../types/ProjectType';
+import type { ProjectRecord } from '../../models/index.js';
 
-export type StoredProject = ProjectType & { _id: Types.ObjectId };
-
-// The client consumes `image` as a plain URL string, so the Cloudinary publicId
-// — needed only for deletes — never leaves the API.
-export type ProjectDto = Omit<ProjectType, 'image'> & {
+/** The web app only ever needs the image URL, not the Cloudinary public id. */
+export interface ProjectDto extends Omit<ProjectRecord, '_id' | 'image'> {
   _id: string;
   image: string;
-};
+}
 
-export function serializeProject(project: StoredProject): ProjectDto {
-  const { _id, image, ...rest } = project;
-
-  return {
-    ...rest,
-    _id: _id.toString(),
-    image: image?.url ?? '',
-  };
+export function toProjectDto({
+  _id,
+  image,
+  ...rest
+}: ProjectRecord): ProjectDto {
+  return { ...rest, _id: String(_id), image: image?.url ?? '' };
 }

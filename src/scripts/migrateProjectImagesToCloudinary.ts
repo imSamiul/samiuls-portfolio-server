@@ -1,17 +1,21 @@
+/* eslint-disable no-console */
 import mongoose from 'mongoose';
-import connectDB, { disconnectDB } from '../config/db';
-import { uploadProjectImage } from '../modules/projects/project.service';
 
-type LegacyImage = {
+import { connectDatabase, disconnectDatabase } from '../config/db.js';
+import { uploadImage } from '../modules/projects/project.service.js';
+
+interface LegacyImage {
   data: mongoose.mongo.Binary | Buffer;
   contentType?: string;
-};
+}
 
-// One-off: project images used to live on the document as a Buffer. This moves
-// them to Cloudinary and rewrites the field. Re-running is safe — migrated
-// documents no longer have `image.data`.
+/**
+ * One-off: project images used to live on the document as a Buffer. This moves
+ * them to Cloudinary and rewrites the field. Re-running is safe — migrated
+ * documents no longer have `image.data`.
+ */
 async function migrateProjectImages() {
-  await connectDB();
+  await connectDatabase();
 
   const projects = mongoose.connection.collection('projects');
   const legacyProjects = await projects
@@ -26,7 +30,8 @@ async function migrateProjectImages() {
       ? image.data
       : Buffer.from(image.data.buffer);
 
-    const uploaded = await uploadProjectImage(buffer);
+    const uploaded = await uploadImage(buffer);
+
     await projects.updateOne(
       { _id: project._id },
       { $set: { image: uploaded } },
@@ -44,4 +49,4 @@ migrateProjectImages()
     console.error('Migration failed', error);
     process.exitCode = 1;
   })
-  .finally(() => disconnectDB());
+  .finally(() => disconnectDatabase());

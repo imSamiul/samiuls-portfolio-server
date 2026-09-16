@@ -1,27 +1,28 @@
-import app from './app';
-import connectDB, { disconnectDB } from './config/db';
-import { env } from './config/env';
+/* eslint-disable no-console */
+import { createApp } from './app.js';
+import { connectDatabase, disconnectDatabase } from './config/db.js';
+import { env } from './config/env.js';
 
-async function start() {
-  // Connect before listening so a healthy port never means a dead database.
-  await connectDB();
+async function bootstrap() {
+  await connectDatabase();
 
-  const server = app.listen(env.PORT, () => {
-    console.log(`Server listening on ${env.PORT} (${env.NODE_ENV})`);
+  const server = createApp().listen(env.PORT, () => {
+    console.log(
+      `API listening on http://localhost:${env.PORT}${env.API_PREFIX}`,
+    );
   });
 
-  // Hosts send SIGTERM on redeploy; finish in-flight requests first.
   const shutdown = () => {
     server.close(() => {
-      void disconnectDB().finally(() => process.exit(0));
+      void disconnectDatabase().finally(() => process.exit(0));
     });
   };
 
-  process.on('SIGTERM', shutdown);
   process.on('SIGINT', shutdown);
+  process.on('SIGTERM', shutdown);
 }
 
-start().catch((error) => {
-  console.error('Failed to start the server', error);
+bootstrap().catch((error) => {
+  console.error('Failed to start API', error);
   process.exit(1);
 });

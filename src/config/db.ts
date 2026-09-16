@@ -1,22 +1,23 @@
 import mongoose from 'mongoose';
-import { env } from './env';
 
-let connection: Promise<typeof mongoose> | null = null;
+import { env, isProduction } from './env.js';
 
-// Memoised so the standalone server and the Vercel entry can both ask for a
-// connection without opening a second pool.
-export default function connectDB() {
-  if (!connection) {
-    connection = mongoose.connect(env.DB_URL, {
-      maxPoolSize: 10,
-      serverSelectionTimeoutMS: 10_000,
-    });
+mongoose.set('strictQuery', true);
+
+/**
+ * Indexes are built explicitly on boot in production rather than implicitly on
+ * every model call, which is why autoIndex is disabled there.
+ */
+export async function connectDatabase(uri: string = env.DB_URL) {
+  await mongoose.connect(uri, { autoIndex: !isProduction });
+
+  if (isProduction) {
+    await Promise.all(
+      Object.values(mongoose.models).map((model) => model.syncIndexes()),
+    );
   }
-
-  return connection;
 }
 
-export function disconnectDB() {
-  connection = null;
-  return mongoose.disconnect();
+export async function disconnectDatabase() {
+  await mongoose.disconnect();
 }

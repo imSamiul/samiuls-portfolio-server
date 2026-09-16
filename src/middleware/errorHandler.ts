@@ -1,40 +1,120 @@
-import { ErrorRequestHandler } from 'express';
+/* eslint-disable no-console */
+import type { ErrorRequestHandler, RequestHandler } from 'express';
 import mongoose from 'mongoose';
-import ApiError from '../utils/ApiError';
+import { MulterError } from 'multer';
+import { ZodError } from 'zod';
 
-// The client reads `error.response.data.message`, so every failure has to keep
-// that key regardless of where it came from.
-const errorHandler: ErrorRequestHandler = (error, _req, res, next) => {
-  if (res.headersSent) {
-    next(error);
-    return;
+import { isProduction } from '../config/env.js';
+import { ApiError } from '../utils/ApiError.js';
+
+export const notFoundHandler: RequestHandler = (req, _res, next) => {
+  next(ApiError.notFound(`Route ${req.method} ${req.originalUrl} not found`));
+};
+
+type NormalizedError = {
+  statusCode: number;
+  message: string;
+  code: string;
+  details?: unknown;
+};
+
+function normalize(error: unknown): NormalizedError {
+  if (error instanceof ApiError) {
+    return {
+      statusCode: error.statusCode,
+      message: error.message,
+      code: error.code,
+      details: error.details,
+    };
   }
 
-  if (error instanceof ApiError) {
-    res.status(error.status).json({ message: error.message });
-    return;
+  if (error instanceof ZodError) {
+    return {
+      statusCode: 422,
+      message: 'Validation failed',
+      code: 'VALIDATION_ERROR',
+      details: error.issues.map((issue) => ({
+        field: issue.path.join('.'),
+        message: issue.message,
+      })),
+    };
   }
 
   if (error instanceof mongoose.Error.ValidationError) {
-    res.status(400).json({ message: error.message });
-    return;
+    return {
+      statusCode: 422,
+      message: 'Validation failed',
+      code: 'VALIDATION_ERROR',
+      details: Object.values(error.errors).map((issue) => ({
+        field: issue.path,
+        message: issue.message,
+      })),
+    };
+  }
+
+  if (error instanceof MulterError) {
+    return {
+      statusCode: error.code === 'LIMIT_FILE_SIZE' ? 413 : 400,
+      message:
+        error.code === 'LIMIT_FILE_SIZE'
+          ? 'That image is larger than 2 MB'
+          : error.message,
+      code: error.code,
+    };
   }
 
   if (error instanceof mongoose.Error.CastError) {
-    res.status(400).json({ message: 'Invalid id' });
-    return;
+    return {
+      statusCode: 400,
+      message: `Invalid value for ${error.path}`,
+      code: 'INVALID_ID',
+    };
   }
 
+  // Duplicate key violations surface as driver errors, not mongoose errors.
   if (
-    error instanceof mongoose.mongo.MongoServerError &&
-    error.code === 11000
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    (error as { code: unknown }).code === 11000
   ) {
-    res.status(409).json({ message: 'This value already exists.' });
-    return;
+    const keyPattern = (error as { keyPattern?: Record<string, unknown> })
+      .keyPattern;
+    const field = keyPattern ? Object.keys(keyPattern)[0] : undefined;
+
+    return {
+      statusCode: 409,
+      message: field
+        ? `A record with this ${field} already exists`
+        : 'Duplicate record',
+      code: 'DUPLICATE_KEY',
+    };
   }
 
-  console.error(error);
-  res.status(500).json({ message: 'Something went wrong' });
-};
+  return {
+    statusCode: 500,
+    message:
+      isProduction || !(error instanceof Error)
+        ? 'Something went wrong'
+        : error.message || 'Something went wrong',
+    code: 'INTERNAL_ERROR',
+  };
+}
 
-export default errorHandler;
+export const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
+  const { statusCode, message, code, details } = normalize(error);
+
+  if (statusCode >= 500) {
+    console.error('[api]', code, message, error);
+  }
+
+  res.status(statusCode).json({
+    success: false,
+    message,
+    code,
+    ...(details ? { details } : {}),
+    ...(isProduction || !(error instanceof Error)
+      ? {}
+      : { stack: error.stack }),
+  });
+};

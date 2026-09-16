@@ -1,34 +1,37 @@
+import compression from 'compression';
 import cors from 'cors';
 import express from 'express';
-import errorHandler from './middleware/errorHandler';
-import routes from './routes';
-import ApiError from './utils/ApiError';
+import helmet from 'helmet';
 
-const app = express();
+import { corsOrigins, env } from './config/env.js';
+import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
+import { apiLimiter } from './middleware/rateLimit.js';
+import { requestLog } from './middleware/requestLog.js';
+import { routes } from './routes.js';
 
-app.use(
-  cors({
-    origin: [
-      'http://192.168.0.174:3002',
-      'https://samiul3041.vercel.app', // Production frontend
-      'http://localhost:3002',
-    ],
-    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-    credentials: true,
-  }),
-);
-app.use(express.json());
+export function createApp() {
+  const app = express();
 
-// Kept outside the API prefix so the host's health check does not depend on it.
-app.get('/health', (_req, res) => {
-  res.status(200).json({ status: 'ok' });
-});
+  // Koyeb sits in front of the API, so client IPs arrive via headers.
+  app.set('trust proxy', 1);
 
-app.use('/api', routes);
+  app.use(helmet());
+  app.use(cors({ origin: corsOrigins, credentials: true }));
+  app.use(compression());
+  app.use(express.json({ limit: '1mb' }));
+  app.use(express.urlencoded({ extended: true }));
+  app.use(requestLog);
 
-app.use((_req, _res, next) => {
-  next(new ApiError(404, 'Route not found'));
-});
-app.use(errorHandler);
+  // Outside the API prefix so the platform health check never counts against
+  // the rate limit.
+  app.get('/health', (_req, res) => {
+    res.json({ status: 'ok', uptime: process.uptime() });
+  });
 
-export default app;
+  app.use(env.API_PREFIX, apiLimiter, routes);
+
+  app.use(notFoundHandler);
+  app.use(errorHandler);
+
+  return app;
+}
