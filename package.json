@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "imports": {
-    "#shared": "./src/shared/index.ts"
+    "#shared": "./src/shared/index.js"
   },
   "scripts": {
     "dev": "tsx watch src/server.ts",

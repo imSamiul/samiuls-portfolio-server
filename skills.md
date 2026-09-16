@@ -228,6 +228,7 @@ pnpm lint && pnpm typecheck
 - The Vercel project's Framework Preset must be **Express**; with it, there is no build command and no output directory. If the dashboard still says "Other", the deploy fails with *No Output Directory named "public"* — fix the preset, do not add `vercel.json` or a `public/` folder to work around it
 - Every env var from `.env.example` goes into the Vercel project, plus `NODE_ENV=production`. `PORT` is not used there
 - `tsx` is a **runtime** dependency for the local and container paths (`pnpm start`), never `dist/`. There is deliberately **no `build` script**: Vercel compiles and bundles the entrypoint itself, and its docs warn that a transpiling build script can break that. `pnpm typecheck` is the type gate
+- `#shared` maps to `./src/shared/index.js`, the **compiled** path, not `index.ts`. Vercel compiles every traced `.ts` and renames it to `.js` in the function while shipping `package.json` untouched, so a `.ts` target resolves to a file that is not there and every request dies with `FUNCTION_INVOCATION_FAILED`. `tsx` and `tsc` both map the `.js` target back to the source, which is why the local paths still work
 - The `Dockerfile` is kept so the API can still run as a container (local parity, and an exit route if Vercel's limits stop fitting)
 - `app.set('trust proxy', 1)` — the platform terminates TLS, and the rate limiter needs the real client IP
 - `SIGTERM`/`SIGINT` close the server then the connection — container path only; Vercel recycles instances itself
