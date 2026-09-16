@@ -1,0 +1,28 @@
+meta {
+  name: Resume Status
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}{{apiPrefix}}/resume
+  body: none
+  auth: none
+}
+
+docs {
+  # Resume Status
+
+  Answers `{ updatedAt }` when a resume is stored and **404**
+  `RESUME_NOT_CONFIGURED` when none is. Nothing about Cloudinary leaves the API
+  here — the public id and version stay internal.
+
+  The website calls this before rendering the download link, because that link
+  is a plain anchor: without the check a visitor would open a new tab and see
+  the raw error envelope of **Download Resume**.
+
+  | Status | Meaning |
+  | --- | --- |
+  | 200 | `{ updatedAt }` |
+  | 404 | `RESUME_NOT_CONFIGURED` — see **Upload Resume** |
+}

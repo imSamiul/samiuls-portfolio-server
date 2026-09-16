@@ -11,24 +11,24 @@ post {
 }
 
 body:multipart-form {
-  resume: @file(/absolute/path/to/resume.pdf)
+  resume: @file(C:\Users\Samiul\OneDrive\Documents\waiver final file.pdf) @contentType(application/pdf)
 }
 
 docs {
   # Upload Resume
-
+  
   Admin only. Replaces the stored PDF — this is the whole update workflow, so
   there is no script and no env var to change.
-
+  
   - `resume` must be a **PDF**, max **5 MB**. Use Bruno's file picker to replace
     the placeholder path.
   - The asset keeps a stable public id and is uploaded with `invalidate: true`,
     so the old file is purged from the CDN. The returned Cloudinary `version` is
     stored in `SiteAsset` and ends up in the download URL.
-
+  
   Uploaded as `resource_type: raw`: Cloudinary blocks PDF delivery for `image`
   assets by default, so this must not be changed to `image`.
-
+  
   | Status | Meaning |
   | --- | --- |
   | 200 | replaced; `data.updatedAt` is when |

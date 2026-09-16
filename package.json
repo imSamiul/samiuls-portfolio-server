@@ -13,7 +13,6 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "test": "vitest run --passWithNoTests",
     "migrate:images": "tsx src/scripts/migrateProjectImagesToCloudinary.ts",
     "backfill:slugs": "tsx src/scripts/backfillProjectSlugs.ts",
     "backfill:publishing": "tsx src/scripts/backfillProjectPublishing.ts"
@@ -30,8 +29,6 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^9.10.1",
     "multer": "2.4.0",
-    "pino": "^10.3.1",
-    "pino-http": "^11.0.0",
     "resend": "^6.28.1",
     "sharp": "^0.33.5",
     "tsx": "^4.23.13",
@@ -46,15 +43,11 @@
     "@types/jsonwebtoken": "^9.0.7",
     "@types/multer": "^2.2.0",
     "@types/node": "^22.20.2",
-    "@types/supertest": "^7.2.1",
     "eslint": "^9.39.5",
     "globals": "^15.12.0",
-    "mongodb-memory-server": "^11.2.0",
     "prettier": "^3.4.1",
-    "supertest": "^7.2.2",
     "typescript": "^5.7.2",
-    "typescript-eslint": "^8.70.0",
-    "vitest": "^5.0.1"
+    "typescript-eslint": "^8.70.0"
   },
   "engines": {
     "node": "22.x"

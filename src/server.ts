@@ -1,17 +1,11 @@
 import { createApp } from './app.js';
 import { connectDatabase, disconnectDatabase } from './config/db.js';
 import { env } from './config/env.js';
-import { logger } from './config/logger.js';
 
 async function bootstrap() {
   await connectDatabase();
 
-  const server = createApp().listen(env.PORT, () => {
-    logger.info(
-      { port: env.PORT, prefix: env.API_PREFIX },
-      `API listening on http://localhost:${env.PORT}${env.API_PREFIX}`,
-    );
-  });
+  const server = createApp().listen(env.PORT);
 
   const shutdown = () => {
     server.close(() => {
@@ -23,7 +17,6 @@ async function bootstrap() {
   process.on('SIGTERM', shutdown);
 }
 
-bootstrap().catch((error: unknown) => {
-  logger.fatal({ err: error }, 'Failed to start API');
-  process.exit(1);
-});
+// Nothing catches this on purpose: a failed boot is fatal, and letting it
+// reject is what prints the reason and exits non-zero.
+await bootstrap();

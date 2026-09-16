@@ -42,19 +42,17 @@ There is no seed and no roles. `ADMIN_EMAIL` is the only address that may sign u
 ```
 src/
   app.ts / server.ts / routes.ts
-  config/          # env (zod), db, cloudinary, logger (pino)
-  middleware/      # requireAuth, validate, rateLimit, upload, errorHandler, requestLog
+  config/          # env (zod), db, cloudinary
+  middleware/      # requireAuth, validate, rateLimit, upload, errorHandler
   models/          # Project, User, SiteAsset, schemaOptions, index
   modules/<domain>/
     *.routes.ts
     *.controller.ts
     *.service.ts
     *.serializer.ts   # public DTO mapping
-    *.test.ts
   shared/          # zod schemas + constants + api types (API copy of contract)
   utils/           # ApiError, response
   scripts/         # one-off migrations
-  test/            # setup (mongodb-memory-server) + helpers (supertest)
   types/           # express.d.ts
 ```
 
@@ -103,13 +101,9 @@ Prefer one round trip over read-modify-write — `toggleHomepage` and `toggleSta
 
 ### Logging
 
-`config/logger.ts` owns the only pino instance. **Nothing outside `src/scripts/` uses `console`** — the scripts are CLIs whose output is meant for a human, everything else is a log line someone has to search on Koyeb.
+**There is none, by choice.** No logger, no access log, no `x-request-id`, and `errorHandler` does not log the 500s it answers. `no-console` is a lint error, and only `src/scripts/` is exempt — those are CLIs whose output is meant for a human.
 
-`requestLog` is `pino-http`, and it gives every request an id: whatever the proxy sent in `x-request-id`, otherwise a fresh `randomUUID()`. The id goes back out as a response header and is attached to every line logged during that request, so an admin can quote the id from a broken page and land on the exact request.
-
-Log through `req.log` inside a request and `logger` outside one. `req.log` is what carries the id; the bare `logger` does not. `errorHandler` logs 500s through `req.log` with `{ err: error }` — pino's `err` key is what serialises a stack, a plain property does not.
-
-Output is JSON lines in every environment. No `pino-pretty`: `tsx` runs this same source in the container, so a dev-only transport would still have to resolve there. Tests set the level to `silent` rather than disabling the middleware, so the code path under test is the real one.
+What that costs, so nobody is surprised by it: a 500 in production leaves no stack anywhere, and a failed revalidation webhook is silent. The client's response still carries `message` and `code`, and outside production it carries the stack too, so the response body is the only place a failure is visible. Do not add a logger back on a hunch — ask first.
 
 ### Publishing and ordering
 
@@ -146,7 +140,7 @@ Projects are addressed publicly by `slug`, not by `_id`. It is derived from the 
 - 401 `UNAUTHORIZED` when the header is missing, 401 `ACCESS_TOKEN_INVALID` when it fails to verify
 - Hashing lives in `modules/auth/password.ts` (bcrypt, cost 12) — not in a schema hook. `schemaOptions` strips `password` from `toJSON` as a backstop
 - Tokens are stateless; there is no `user.tokens` array and no revocation
-- `authLimiter` (20 / 15 min / IP) on credential routes, `apiLimiter` (600) on everything else; both skipped in tests
+- `authLimiter` (20 / 15 min / IP) on credential routes, `apiLimiter` (600) on everything else; both still carry a `skip` for `NODE_ENV=test`, which nothing sets now
 - **Planned, last:** httpOnly cookies with `sameSite: 'none'` + `secure: true`. Do not start this as a side effect of another task
 
 ### Images
@@ -180,18 +174,13 @@ Spam is handled with a **honeypot**, not a captcha: the form renders a hidden `w
 | `/auth` | `signUp`, `login` → `{ user: { id, email }, token }` |
 | `/contact` | public `POST /` → mails `ADMIN_EMAIL`, returns `data: null` |
 | `/project` | public `getAllProjects`, `getProjectsForHomepage`, `getProjectBySlug/:slug`, `getProjectById/:id` (all published-only); admin `getAllProjectsForDashboard`, `create` (multipart), `updateProject/:id`, `updateStatus/:id`, `updateShowOnHomePage/:id`, `deleteProject/:id` |
-| `/resume` | public `download` → 302 to the Cloudinary PDF (**not** enveloped); admin `POST /` (multipart) replaces it |
+| `/resume` | public `GET /` → `{ updatedAt }` or 404 `RESUME_NOT_CONFIGURED`, `download` → 302 to the Cloudinary PDF (**not** enveloped); admin `POST /` (multipart) replaces it |
 
 Health: `GET /health` (outside prefix). Success is `{ success, message, data }`, errors are `{ success, message, code, details? }`.
 
 ### Tests
 
-Vitest + Supertest + mongodb-memory-server. `vitest.config.ts` injects the test env, so the suite needs no `.env` file and no running Mongo. `src/test/helpers.ts` gives the supertest client, `url()` (prefixes `API_PREFIX`) and `createAdmin()`.
-
-Nothing reaches the network, but keep it that way deliberately:
-
-- Cloudinary **is** configured with dummy keys, only so `cloudinary.url()` can build delivery URLs (pure string work) and the resume redirect can be asserted. Never exercise an upload path in a test — it would hit the network instead of stopping at a guard.
-- Resend is mocked with `vi.mock('resend')`, so the contact tests assert the payload that would have been sent.
+**There are none.** The suite (Vitest + Supertest + mongodb-memory-server) was removed on request; `pnpm lint && pnpm typecheck` is the whole gate. Verify a change by running it — `pnpm dev` plus the Bruno collection in `bruno/`, which covers every route.
 
 ---
 
@@ -200,7 +189,7 @@ Nothing reaches the network, but keep it that way deliberately:
 1. Run `pnpm backfill:slugs` — `slug` is required and unique, and existing documents predate it. Run it **before** the first boot that calls `syncIndexes()`.
 2. Run `pnpm backfill:publishing` — `status` and `order` are required, and documents that predate them read back `undefined`, which the public lists filter out. **Ship this with the deploy or the site goes empty.**
 3. Run `pnpm migrate:images` — existing documents still hold `image: { data: Buffer, contentType }`, so they serialise to an empty `image`.
-4. Upload the resume once from the dashboard (`/dashboard/resume`); until then `/api/v1/resume/download` answers 503 `RESUME_NOT_CONFIGURED`.
+4. Upload the resume once from the dashboard (`/dashboard/resume`); until then `/api/v1/resume` answers 404 and the homepage renders no download button.
 5. Set `RESEND_API_KEY`; until then `/api/v1/contact` answers 503 `MAIL_NOT_CONFIGURED`.
 6. Set `WEB_REVALIDATE_URL` and `REVALIDATE_SECRET` on both sides; the website caches project data indefinitely and will not update without them.
 7. Create the Koyeb service from the `Dockerfile` and delete the Vercel project.
@@ -214,7 +203,6 @@ Nothing reaches the network, but keep it that way deliberately:
 pnpm install
 cp .env.example .env.development   # DB_URL, JWT_TOKEN and ADMIN_EMAIL are required
 pnpm dev
-pnpm test
 pnpm lint && pnpm typecheck
 ```
 

@@ -1,10 +1,10 @@
 import { RESUME_DOWNLOAD_NAME, RESUME_PUBLIC_ID } from '#shared';
-import type { UploadApiResponse } from 'cloudinary';
 
 import {
   assertCloudinaryConfigured,
   cloudinary,
   RESUME_FOLDER,
+  uploadBuffer,
 } from '../../config/cloudinary.js';
 import type { SiteAssetRecord } from '../../models/index.js';
 import { SiteAsset } from '../../models/index.js';
@@ -17,32 +17,16 @@ const RESUME_KEY = 'resume';
  * so the owner can swap the resume from the dashboard without a redeploy.
  */
 export async function replaceResume(buffer: Buffer) {
-  assertCloudinaryConfigured();
-
-  const result = await new Promise<UploadApiResponse>((resolve, reject) => {
-    const upload = cloudinary.uploader.upload_stream(
-      {
-        folder: RESUME_FOLDER,
-        public_id: RESUME_PUBLIC_ID,
-        // PDFs are raw: Cloudinary blocks PDF delivery for `image` assets by
-        // default, so this must not become 'image'.
-        resource_type: 'raw',
-        overwrite: true,
-        // The public id is stable, so without this the CDN would keep handing
-        // out the previous PDF from the same URL.
-        invalidate: true,
-      },
-      (error, uploaded) => {
-        if (error || !uploaded) {
-          reject(error ?? new Error('Cloudinary returned no upload result'));
-          return;
-        }
-
-        resolve(uploaded);
-      },
-    );
-
-    upload.end(buffer);
+  const result = await uploadBuffer(buffer, {
+    folder: RESUME_FOLDER,
+    public_id: RESUME_PUBLIC_ID,
+    // PDFs are raw: Cloudinary blocks PDF delivery for `image` assets by
+    // default, so this must not become 'image'.
+    resource_type: 'raw',
+    overwrite: true,
+    // The public id is stable, so without this the CDN would keep handing out
+    // the previous PDF from the same URL.
+    invalidate: true,
   });
 
   const asset = await SiteAsset.findOneAndUpdate(
@@ -50,6 +34,25 @@ export async function replaceResume(buffer: Buffer) {
     { publicId: result.public_id, version: result.version },
     { returnDocument: 'after', upsert: true },
   ).lean<SiteAssetRecord>();
+
+  return asset;
+}
+
+/**
+ * Lets the website know whether a resume exists before it renders a download
+ * link, so a visitor never lands on the 503 envelope in a new tab.
+ */
+export async function getResumeMeta() {
+  const asset = await SiteAsset.findOne({ key: RESUME_KEY })
+    .select('updatedAt')
+    .lean<Pick<SiteAssetRecord, 'updatedAt'>>();
+
+  if (!asset) {
+    throw ApiError.notFound(
+      'No resume has been uploaded yet',
+      'RESUME_NOT_CONFIGURED',
+    );
+  }
 
   return asset;
 }

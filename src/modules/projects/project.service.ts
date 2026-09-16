@@ -1,12 +1,12 @@
 import { PROJECT_IMAGE_HEIGHT, PROJECT_IMAGE_WIDTH } from '#shared';
 import type { CreateProjectInput, UpdateProjectInput } from '#shared';
-import type { UploadApiResponse } from 'cloudinary';
 import sharp from 'sharp';
 
 import {
   assertCloudinaryConfigured,
   cloudinary,
   PROJECT_IMAGE_FOLDER,
+  uploadBuffer,
 } from '../../config/cloudinary.js';
 import type {
   ProjectImage,
@@ -35,6 +35,8 @@ const PUBLISHED = { status: 'published' } as const;
  * 2 MB PNG would stay a 2 MB PNG. Also used by the one-off data migration.
  */
 export async function uploadImage(buffer: Buffer): Promise<ProjectImage> {
+  // Ahead of the re-encoding, so an unconfigured environment fails before
+  // spending the CPU on it.
   assertCloudinaryConfigured();
 
   const optimised = await sharp(buffer)
@@ -44,20 +46,9 @@ export async function uploadImage(buffer: Buffer): Promise<ProjectImage> {
 
   // Streamed rather than sent as a base64 data URI, which would inflate the
   // payload by a third and hold the whole image in memory twice.
-  const result = await new Promise<UploadApiResponse>((resolve, reject) => {
-    const upload = cloudinary.uploader.upload_stream(
-      { folder: PROJECT_IMAGE_FOLDER, resource_type: 'image' },
-      (error, uploaded) => {
-        if (error || !uploaded) {
-          reject(error ?? new Error('Cloudinary returned no upload result'));
-          return;
-        }
-
-        resolve(uploaded);
-      },
-    );
-
-    upload.end(optimised);
+  const result = await uploadBuffer(optimised, {
+    folder: PROJECT_IMAGE_FOLDER,
+    resource_type: 'image',
   });
 
   return { url: result.secure_url, publicId: result.public_id };

@@ -100,14 +100,8 @@ function normalize(error: unknown): NormalizedError {
   };
 }
 
-export const errorHandler: ErrorRequestHandler = (error, req, res, _next) => {
+export const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
   const { statusCode, message, code, details } = normalize(error);
-
-  if (statusCode >= 500) {
-    // req.log carries the request id and the request itself, so the stack lands
-    // next to the call that produced it.
-    req.log.error({ err: error, code }, message);
-  }
 
   res.status(statusCode).json({
     success: false,

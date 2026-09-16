@@ -21,7 +21,6 @@ export function createApp() {
   app.use(compression());
   app.use(express.json({ limit: '1mb' }));
   app.use(express.urlencoded({ extended: true }));
-  app.use(requestLog);
 
   // Outside the API prefix so the platform health check never counts against
   // the rate limit.
@@ -29,7 +28,8 @@ export function createApp() {
     sendSuccess(res, 'ok', { uptime: process.uptime() });
   });
 
-  app.use(env.API_PREFIX, apiLimiter, routes);
+  // After /health so the platform's health probe does not flood the log.
+  app.use(env.API_PREFIX, requestLog, apiLimiter, routes);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

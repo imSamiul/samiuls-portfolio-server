@@ -1,5 +1,4 @@
 import { env } from '../config/env.js';
-import { logger } from '../config/logger.js';
 
 /**
  * The website caches project data indefinitely and relies on this webhook to
@@ -7,11 +6,15 @@ import { logger } from '../config/logger.js';
  * shared package, so the two copies are kept in step by hand.
  */
 const PROJECTS_TAG = 'projects';
+const RESUME_TAG = 'resume';
 
 /**
  * Fire and forget on purpose: a write must never fail because the website is
- * unreachable, so the result is logged and swallowed. Call it **after** the
- * response has been sent.
+ * unreachable, so the result is swallowed. Call it **after** the response has
+ * been sent.
+ *
+ * Nothing reports a rejected or failed call, so if the site stops picking up
+ * changes, check `WEB_REVALIDATE_URL` and `REVALIDATE_SECRET` on both sides.
  */
 function revalidateWeb(tags: string[]) {
   const { WEB_REVALIDATE_URL, REVALIDATE_SECRET } = env;
@@ -28,18 +31,17 @@ function revalidateWeb(tags: string[]) {
       'x-revalidate-secret': REVALIDATE_SECRET,
     },
     body: JSON.stringify({ tags }),
-  })
-    .then((response) => {
-      if (!response.ok) {
-        logger.warn({ status: response.status, tags }, 'Revalidation rejected');
-      }
-    })
-    .catch((error: unknown) => {
-      logger.warn({ err: error, tags }, 'Revalidation failed');
-    });
+  }).catch(() => {
+    // Swallowed: see above.
+  });
 }
 
 /** Drops every list plus the one project's own page. */
 export function revalidateProject(slug: string) {
   revalidateWeb([PROJECTS_TAG, `project:${slug}`]);
+}
+
+/** The homepage reads the resume metadata to decide whether to link to it. */
+export function revalidateResume() {
+  revalidateWeb([RESUME_TAG]);
 }

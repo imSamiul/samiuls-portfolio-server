@@ -6,6 +6,7 @@ import * as resumeController from './resume.controller.js';
 
 export const resumeRoutes = Router();
 
+resumeRoutes.get('/', resumeController.meta);
 resumeRoutes.get('/download', resumeController.download);
 
 resumeRoutes.post(
