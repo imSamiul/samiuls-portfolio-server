@@ -4,7 +4,7 @@ The conventions for this repository live in [`skills.md`](./skills.md). **Read i
 
 Short version:
 
-- Express 5 + Mongoose 9 + TypeScript (ESM, NodeNext), run by `tsx` and deployed to **Koyeb with Docker**. Not Vercel serverless — `app.listen` stays.
+- Express 5 + Mongoose 9 + TypeScript (ESM, NodeNext), run by `tsx` locally and deployed to **Vercel's zero-config Express** runtime. The default export in `src/app.ts` is the deployment; `server.ts` keeps `app.listen` for local and Docker.
 - The layout is `src/modules/<domain>/` with routes → controller → service → serializer. Named exports only, `.js` extensions on relative imports, no `asyncHandler` (Express 5 forwards rejected promises).
 - Zod lives in `src/shared` and is independent from the client repo's copy. Update both sides by hand after a contract change.
 - No Redis. Auth stays Bearer JWT until a task explicitly asks for the httpOnly cookie migration.

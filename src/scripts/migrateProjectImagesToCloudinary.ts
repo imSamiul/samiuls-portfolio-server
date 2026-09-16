@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 import mongoose from 'mongoose';
 
-import { connectDatabase, disconnectDatabase } from '../config/db.js';
+import { disconnectDatabase, ensureDatabase } from '../config/db.js';
 import { uploadImage } from '../modules/projects/project.service.js';
 
 interface LegacyImage {
@@ -15,7 +15,7 @@ interface LegacyImage {
  * documents no longer have `image.data`.
  */
 async function migrateProjectImages() {
-  await connectDatabase();
+  await ensureDatabase();
 
   const projects = mongoose.connection.collection('projects');
   const legacyProjects = await projects

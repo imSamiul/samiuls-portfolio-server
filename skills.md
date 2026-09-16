@@ -9,14 +9,14 @@ Cursor loads `.cursor/skills/portfolio/` automatically when relevant. This file 
 ## Project
 
 ```
-samiuls-portfolio-api   Express 5 + Mongoose 9 + Cloudinary → Koyeb (Docker)
+samiuls-portfolio-api   Express 5 + Mongoose 9 + Cloudinary → Vercel (serverless Express)
 ```
 
 - Package manager: **pnpm**; Node 22
 - Schemas/types: `src/shared` → import `#shared` (`package.json` `"imports"`)
 - Sister frontend repo owns its own copy as `@/shared`. After a contract change, update **both** copies.
 - Manual API examples live in [`bruno/`](./bruno/README.md) (Bearer token, not a cookie jar)
-- **No** Redis, no Firebase; do **not** host this API on Vercel serverless
+- **No** Redis, no Firebase. The runtime is Vercel's zero-config Express support — see [Serverless constraints](#serverless-constraints)
 - Respond to the user in **Bangla + English** when chatting (code/comments stay English)
 
 ### The one account
@@ -33,7 +33,7 @@ There is no seed and no roles. `ADMIN_EMAIL` is the only address that may sign u
 4. **Responses** — `sendSuccess(res, message, data, status?)`. Never `res.json()` a bare payload. Serializers emit `id`, never `_id`.
 5. **ESM** — `import type` for type-only imports, `.js` extension on every relative import.
 6. **Surgical diffs** — only touch what the task needs; no drive-by refactors.
-7. **No secrets** in commits; copy `.env.example` → `.env.development` (gitignored). Live secrets live on Koyeb.
+7. **No secrets** in commits; copy `.env.example` → `.env.development` (gitignored). Live secrets live in the Vercel project's environment variables.
 
 ---
 
@@ -62,7 +62,7 @@ src/
 - Validate with `#shared` zod + `validate()` middleware
 - Auth = Bearer JWT in `Authorization` (cookies are the last planned migration)
 - Public responses via serializers + `sendSuccess` / `ApiError`
-- Named exports only — no default exports anywhere
+- Named exports only. The single exception is `src/app.ts`, whose default export is how Vercel finds the app
 - Nothing touches the filesystem: images and the resume PDF both live in Cloudinary
 
 ### Domains
@@ -73,11 +73,24 @@ src/
 
 ## Stack details
 
-- Express 5 + TypeScript (ESM, `NodeNext`), executed by **tsx** in dev *and* in the container
+- Express 5 + TypeScript (ESM, `NodeNext`), executed by **tsx** locally; on Vercel the platform compiles the TypeScript itself
 - Mongoose 9 + MongoDB Atlas
 - Cloudinary + multer (memory storage) + sharp
 - JWT Bearer token, `JWT_TOKEN_TTL_DAYS` (7 by default)
-- `express-rate-limit` with the in-memory store — one instance, no shared store to sync
+- `express-rate-limit` with the in-memory store — per instance, so the limits are weaker than they look (see below)
+
+### Serverless constraints
+
+Vercel finds the app through the **default export in `src/app.ts`** (its Express detection scans `app`/`index`/`server` at the root and under `src/`). `server.ts` listens on that same instance and is what Docker and `pnpm dev` run; Vercel never executes it. Neither `vercel.json` nor an `api/` folder is needed — adding them opts out of the detection.
+
+Four things follow from there, and each one has already bitten a design decision:
+
+- **There is no boot step.** The first request arrives before anything has connected, so `withDatabase` awaits `ensureDatabase()` ahead of every `/api/v1` route. The promise is cached per instance and cleared if it rejects, so a bad connection does not poison the instance. `/health` sits outside the prefix and answers without the database.
+- **Indexes are not built at runtime.** `autoIndex` is off in production and a cold start must not check indexes, so `pnpm sync:indexes` is a deploy step — run it whenever an index changes.
+- **Work must not outlive the response.** The instance can be frozen the moment the response is sent, so `revalidateWeb` hands its webhook to `waitUntil()`. Anything else fired after `sendSuccess` has to do the same or it will silently not happen.
+- **Request bodies stop at 4.5 MB.** `MAX_RESUME_BYTES` is 4 MB so multer answers `RESUME_TOO_LARGE` instead of the edge returning an opaque 413. Project images are 2 MB, well inside it.
+
+The rate limiters are in-memory, so each instance counts on its own: the effective limit is roughly *(configured limit × warm instances)*. That is accepted, not overlooked — a shared store means Redis, and this is a single-admin dashboard. The contact form's real defence is the honeypot.
 
 ### Module rules
 
@@ -113,6 +126,12 @@ Both public lists filter `status: 'published'`. The dashboard needs drafts, so i
 
 `order` is a plain ascending integer applied before `createdAt: -1`, so an older, stronger project can sit on top. No drag-and-drop: with this many projects a number field carries almost all the value.
 
+### Pagination
+
+`getAllProjects` is the one paginated list — it is the only one with no ceiling on its size. `?page=&limit=` (defaults 1 and `PROJECTS_PAGE_SIZE`, `limit` capped at 50, out-of-range values are a 422), and `data` is `{ items, meta }` where `meta` carries `page`, `limit`, `total`, `totalPages` and `hasMore`. The homepage and dashboard lists stay unpaginated: one is curated and short, the other is a single admin table.
+
+Offset paging, not a cursor — the collection is small and admin-written, so the stability a cursor buys is not worth the awkward comparison that a compound `(order, createdAt)` sort key would need. The sort ends in `_id` precisely so the offsets stay honest: without a unique final key, projects sharing an `order` and a `createdAt` could repeat or disappear across a page boundary. Both list indexes carry the trailing `_id`, so keep them in step with the sort and run `pnpm sync:indexes` after changing either.
+
 `status` defaults only apply to documents mongoose creates, so projects that predate the field read back as `undefined` and would vanish from the site. `pnpm backfill:publishing` fixes that and must run with the deploy.
 
 ### Revalidation
@@ -122,7 +141,8 @@ The website caches project data **indefinitely** (`revalidate: false` + tags), s
 Two rules:
 
 - It runs in the **controller, after `sendSuccess`** — this is an outbound integration, not domain logic, and the response must not wait on it.
-- It is **fire-and-forget**: the promise is not awaited, failures are logged and swallowed. A write must never fail because the site is unreachable.
+- It is **fire-and-forget**: the promise is not awaited and failures are swallowed. A write must never fail because the site is unreachable.
+- On Vercel the promise is handed to `waitUntil()`, because a response-sent instance can be frozen before the fetch leaves. Without it the site would quietly stop updating.
 
 Unset in development, so writes simply skip the call. **Required in production** — without it the site caches forever and never updates. The tag strings are a hand-maintained contract with the frontend's `projectServerApis.ts`; there is no shared package.
 
@@ -155,7 +175,7 @@ The PDF is a raw Cloudinary asset and its pointer is a `SiteAsset` document (`ke
 
 `version` is the cache-busting mechanism. The public id is stable, so uploads pass `invalidate: true` and the stored version goes into the delivery URL — otherwise the CDN would keep handing out the previous PDF from an unchanged URL.
 
-Two things must not change: `GET /download` stays a **302** (streaming bytes through Node would burn Koyeb egress and memory and lose CDN range requests), and the asset stays `resource_type: 'raw'` (Cloudinary blocks PDF delivery for `image` assets by default).
+Two things must not change: `GET /download` stays a **302** (streaming bytes through the function would burn its memory and execution time and lose CDN range requests), and the asset stays `resource_type: 'raw'` (Cloudinary blocks PDF delivery for `image` assets by default).
 
 On the client this is a plain anchor. Never fetch it as a blob: that buffers the file in memory, discards the `Content-Disposition` filename, and makes the download depend on Cloudinary's CORS policy.
 
@@ -186,14 +206,11 @@ Health: `GET /health` (outside prefix). Success is `{ success, message, data }`,
 
 ## Still open, in order
 
-1. Run `pnpm backfill:slugs` — `slug` is required and unique, and existing documents predate it. Run it **before** the first boot that calls `syncIndexes()`.
-2. Run `pnpm backfill:publishing` — `status` and `order` are required, and documents that predate them read back `undefined`, which the public lists filter out. **Ship this with the deploy or the site goes empty.**
-3. Run `pnpm migrate:images` — existing documents still hold `image: { data: Buffer, contentType }`, so they serialise to an empty `image`.
-4. Upload the resume once from the dashboard (`/dashboard/resume`); until then `/api/v1/resume` answers 404 and the homepage renders no download button.
-5. Set `RESEND_API_KEY`; until then `/api/v1/contact` answers 503 `MAIL_NOT_CONFIGURED`.
-6. Set `WEB_REVALIDATE_URL` and `REVALIDATE_SECRET` on both sides; the website caches project data indefinitely and will not update without them.
-7. Create the Koyeb service from the `Dockerfile` and delete the Vercel project.
-8. Auth to httpOnly cookies — **last**, and only when a task explicitly asks.
+1. Run `pnpm sync:indexes` against production once the deploy is up — `autoIndex` is off there and nothing builds indexes at runtime any more. Re-run it whenever an index changes. The three data migrations (`backfill:slugs`, `backfill:publishing`, `migrate:images`) have already been run against Atlas.
+2. In Cloudinary, Settings → Security → **Restricted media types**, allow PDF/raw delivery; until then `/resume/download` redirects to a URL that answers 401 `deny or ACL failure`.
+3. Set `RESEND_API_KEY`; until then `/api/v1/contact` answers 503 `MAIL_NOT_CONFIGURED`.
+4. Set `WEB_REVALIDATE_URL` and `REVALIDATE_SECRET` on both sides; the website caches project data indefinitely and will not update without them.
+5. Auth to httpOnly cookies — **last**, and only when a task explicitly asks.
 
 ---
 
@@ -207,24 +224,26 @@ pnpm lint && pnpm typecheck
 ```
 
 - Local API: http://localhost:4000/health
-- **Production:** Koyeb Web Service (Docker) + MongoDB Atlas M0 + Cloudinary
-- `tsx` is a **runtime** dependency: the container runs `pnpm start`, never `dist/`. `pnpm build` exists for typecheck/emit only
+- **Production:** Vercel (its own project, separate from the website) + MongoDB Atlas M0 + Cloudinary
+- The Vercel project's Framework Preset must be **Express**; with it, there is no build command and no output directory. If the dashboard still says "Other", the deploy fails with *No Output Directory named "public"* — fix the preset, do not add `vercel.json` or a `public/` folder to work around it
+- Every env var from `.env.example` goes into the Vercel project, plus `NODE_ENV=production`. `PORT` is not used there
+- `tsx` is a **runtime** dependency for the local and container paths (`pnpm start`), never `dist/`. `pnpm build` exists for typecheck/emit only
+- The `Dockerfile` is kept so the API can still run as a container (local parity, and an exit route if Vercel's limits stop fitting)
 - `app.set('trust proxy', 1)` — the platform terminates TLS, and the rate limiter needs the real client IP
-- In production `autoIndex` is off and `syncIndexes()` runs once at boot; `SIGTERM`/`SIGINT` close the server then the connection
-- Set `CORS_ORIGIN` to the Vercel frontend origin (comma separated for more than one)
-- Vercel is gone: `vercel.json`, the committed `dist/`, `src/index.ts` and the `pre-commit`/`add-build` scripts were all deleted. Do not bring them back
+- `SIGTERM`/`SIGINT` close the server then the connection — container path only; Vercel recycles instances itself
 
 ---
 
 ## What not to do
 
-- Do not host this Express API on Vercel serverless, or add serverless handler exports
+- Do not add `vercel.json`, an `api/` folder or a serverless handler wrapper — Vercel's Express detection already covers all of it
 - Do not add Redis, OTP flows, or refresh-token rotation — this is a single-admin dashboard
 - Do not write image bytes into MongoDB, or read images or the resume off the filesystem
 - Do not add `asyncHandler` or a controller `try/catch` that only forwards the error
 - Do not invent `containers/`, `views/`, a top-level `services/`, or parallel routing layers
 - Do not skip serializers for public entity responses, or expose `_id`
 - Do not read `process.env` outside `src/config/env.ts`, or hand-write `res.status(500)`
-- Do not use default exports, and do not drop the `.js` extension from a relative import
+- Do not use default exports outside `src/app.ts`, and do not drop the `.js` extension from a relative import
+- Do not start long work after `sendSuccess` without `waitUntil` — the instance can be frozen before it runs
 - Do not assume a monorepo `packages/shared` — schemas are local `#shared`
 - Do not switch auth to cookies as a side effect of another task

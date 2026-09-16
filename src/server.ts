@@ -1,11 +1,15 @@
-import { createApp } from './app.js';
-import { connectDatabase, disconnectDatabase } from './config/db.js';
+import app from './app.js';
+import { disconnectDatabase, ensureDatabase } from './config/db.js';
 import { env } from './config/env.js';
 
+/**
+ * The container entry. On Vercel nothing runs this file: the platform imports
+ * the app from `app.ts` and owns the listener itself.
+ */
 async function bootstrap() {
-  await connectDatabase();
+  await ensureDatabase();
 
-  const server = createApp().listen(env.PORT);
+  const server = app.listen(env.PORT);
 
   const shutdown = () => {
     server.close(() => {

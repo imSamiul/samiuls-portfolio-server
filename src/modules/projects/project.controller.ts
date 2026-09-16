@@ -1,20 +1,36 @@
-import type { CreateProjectInput, UpdateProjectInput } from '#shared';
+import type {
+  CreateProjectInput,
+  PaginationQuery,
+  UpdateProjectInput,
+} from '#shared';
 import type { RequestHandler } from 'express';
 
+import { validatedQuery } from '../../middleware/validate.js';
 import { ApiError } from '../../utils/ApiError.js';
 import { sendSuccess } from '../../utils/response.js';
 import { revalidateProject } from '../../utils/revalidateWeb.js';
 import { toProjectDetail, toProjectSummary } from './project.serializer.js';
 import * as projectService from './project.service.js';
 
-export const list: RequestHandler = async (_req, res) => {
-  const projects = await projectService.listProjects();
+/**
+ * The only paginated list: the website renders the first page on the server and
+ * pulls the rest in as the visitor scrolls, so the meta is what tells it when to
+ * stop asking.
+ */
+export const list: RequestHandler = async (req, res) => {
+  const { page, limit } = validatedQuery<PaginationQuery>(req);
+  const { items, total } = await projectService.listProjects({ page, limit });
 
-  sendSuccess(
-    res,
-    `${projects.length} projects`,
-    projects.map(toProjectSummary),
-  );
+  sendSuccess(res, `${items.length} projects`, {
+    items: items.map(toProjectSummary),
+    meta: {
+      page,
+      limit,
+      total,
+      totalPages: Math.max(1, Math.ceil(total / limit)),
+      hasMore: page * limit < total,
+    },
+  });
 };
 
 /** Admin only: the dashboard has to see drafts, which the public lists hide. */
@@ -94,7 +110,7 @@ export const toggleHomepage: RequestHandler<{ id: string }> = async (
       ? 'Project shown on the homepage'
       : 'Project hidden from the homepage',
     toProjectDetail(project),
-    );
+  );
   revalidateProject(project.slug);
 };
 
@@ -106,7 +122,9 @@ export const toggleStatus: RequestHandler<{ id: string }> = async (
 
   sendSuccess(
     res,
-    project.status === 'published' ? 'Project published' : 'Project unpublished',
+    project.status === 'published'
+      ? 'Project published'
+      : 'Project unpublished',
     toProjectDetail(project),
   );
   revalidateProject(project.slug);

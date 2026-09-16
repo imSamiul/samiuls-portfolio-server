@@ -2,10 +2,10 @@
 name: portfolio-backend
 description: >-
   Samiul portfolio backend conventions (Express + Mongoose + Cloudinary on
-  Koyeb). Use when coding, scaffolding, refactoring, or reviewing anything in
+  Vercel). Use when coding, scaffolding, refactoring, or reviewing anything in
   this API repository, or when the user mentions portfolio projects endpoints,
-  admin login, resume download, project image uploads, Cloudinary, or the Koyeb
-  deployment.
+  admin login, resume download, project image uploads, Cloudinary, or the
+  Vercel deployment.
 ---
 
 # Samiul Portfolio Backend

@@ -1,6 +1,7 @@
 import {
   createProjectSchema,
   objectIdParamsSchema,
+  paginationQuerySchema,
   slugParamsSchema,
   updateProjectSchema,
 } from '#shared';
@@ -13,7 +14,11 @@ import * as projectController from './project.controller.js';
 
 export const projectRoutes = Router();
 
-projectRoutes.get('/getAllProjects', projectController.list);
+projectRoutes.get(
+  '/getAllProjects',
+  validate({ query: paginationQuerySchema }),
+  projectController.list,
+);
 projectRoutes.get('/getProjectsForHomepage', projectController.listForHomepage);
 
 // A separate authenticated route rather than a query param on `getAllProjects`:

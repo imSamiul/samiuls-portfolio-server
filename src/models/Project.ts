@@ -81,10 +81,18 @@ const projectSchema = new Schema<ProjectAttributes>(
   baseSchemaOptions,
 );
 
-// Both public lists filter on status and sort by `order` then `createdAt`, so
-// the indexes have to carry all four fields in that order.
-projectSchema.index({ status: 1, showOnHomepage: 1, order: 1, createdAt: -1 });
-projectSchema.index({ status: 1, order: 1, createdAt: -1 });
+// Both public lists filter on status and sort by `order`, `createdAt` then
+// `_id`, so the indexes have to carry every field in that order — the trailing
+// `_id` is what keeps the paginated list's sort unique, and leaving it out of
+// the index would turn the sort into an in-memory one.
+projectSchema.index({
+  status: 1,
+  showOnHomepage: 1,
+  order: 1,
+  createdAt: -1,
+  _id: 1,
+});
+projectSchema.index({ status: 1, order: 1, createdAt: -1, _id: 1 });
 
 // The dashboard list is unfiltered and admin-only, so it is left to scan: at
 // this collection's size an extra index would cost more than it saves.

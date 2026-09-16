@@ -1,5 +1,9 @@
 import { PROJECT_IMAGE_HEIGHT, PROJECT_IMAGE_WIDTH } from '#shared';
-import type { CreateProjectInput, UpdateProjectInput } from '#shared';
+import type {
+  CreateProjectInput,
+  PaginationQuery,
+  UpdateProjectInput,
+} from '#shared';
 import sharp from 'sharp';
 
 import {
@@ -24,8 +28,13 @@ const WEBP_QUALITY = 80;
  */
 const LIST_PROJECTION = '-projectDetails';
 
-/** `order` ascending first, so an older, better project can stay on top. */
-const LIST_SORT = { order: 1, createdAt: -1 } as const;
+/**
+ * `order` ascending first, so an older, better project can stay on top. `_id`
+ * breaks ties: two projects can share an `order` and a `createdAt`, and without
+ * a unique final key the paginated list could repeat or skip one at a page
+ * boundary.
+ */
+const LIST_SORT = { order: 1, createdAt: -1, _id: 1 } as const;
 
 /** `showOnHomepage` is a display flag; this is the actual publish gate. */
 const PUBLISHED = { status: 'published' } as const;
@@ -54,11 +63,23 @@ export async function uploadImage(buffer: Buffer): Promise<ProjectImage> {
   return { url: result.secure_url, publicId: result.public_id };
 }
 
-export function listProjects() {
-  return Project.find(PUBLISHED)
-    .select(LIST_PROJECTION)
-    .sort(LIST_SORT)
-    .lean<ProjectSummaryRecord[]>();
+/**
+ * Paginated because this is the one list that grows without a ceiling. The sort
+ * ends in `createdAt`, which is effectively unique, so a document cannot drift
+ * across page boundaries between two requests.
+ */
+export async function listProjects({ page, limit }: PaginationQuery) {
+  const [items, total] = await Promise.all([
+    Project.find(PUBLISHED)
+      .select(LIST_PROJECTION)
+      .sort(LIST_SORT)
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean<ProjectSummaryRecord[]>(),
+    Project.countDocuments(PUBLISHED),
+  ]);
+
+  return { items, total };
 }
 
 export function listHomepageProjects() {

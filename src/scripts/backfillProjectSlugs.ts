@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 import mongoose from 'mongoose';
 
-import { connectDatabase, disconnectDatabase } from '../config/db.js';
+import { disconnectDatabase, ensureDatabase } from '../config/db.js';
 
 /**
  * One-off: projects predate `slug`, and the field is required and unique. Run
@@ -14,7 +14,7 @@ import { connectDatabase, disconnectDatabase } from '../config/db.js';
  * reject these documents for missing the very field being added.
  */
 async function backfillProjectSlugs() {
-  await connectDatabase();
+  await ensureDatabase();
 
   const projects = mongoose.connection.collection('projects');
   const pending = await projects

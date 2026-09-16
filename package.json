@@ -13,11 +13,13 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
+    "sync:indexes": "tsx src/scripts/syncIndexes.ts",
     "migrate:images": "tsx src/scripts/migrateProjectImagesToCloudinary.ts",
     "backfill:slugs": "tsx src/scripts/backfillProjectSlugs.ts",
     "backfill:publishing": "tsx src/scripts/backfillProjectPublishing.ts"
   },
   "dependencies": {
+    "@vercel/functions": "^3.9.8",
     "bcrypt": "^6.0.0",
     "cloudinary": "^2.11.0",
     "compression": "^1.8.2",

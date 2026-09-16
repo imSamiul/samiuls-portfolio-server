@@ -1,7 +1,7 @@
 /* eslint-disable no-console */
 import mongoose from 'mongoose';
 
-import { connectDatabase, disconnectDatabase } from '../config/db.js';
+import { disconnectDatabase, ensureDatabase } from '../config/db.js';
 
 /**
  * One-off: `status` defaults to `draft`, but mongoose defaults only apply to
@@ -12,7 +12,7 @@ import { connectDatabase, disconnectDatabase } from '../config/db.js';
  * Re-running is safe: documents that already have the fields are skipped.
  */
 async function backfillProjectPublishing() {
-  await connectDatabase();
+  await ensureDatabase();
 
   const projects = mongoose.connection.collection('projects');
 

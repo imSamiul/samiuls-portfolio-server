@@ -7,13 +7,15 @@ import { corsOrigins, env } from './config/env.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { apiLimiter } from './middleware/rateLimit.js';
 import { requestLog } from './middleware/requestLog.js';
+import { withDatabase } from './middleware/withDatabase.js';
 import { routes } from './routes.js';
 import { sendSuccess } from './utils/response.js';
 
 export function createApp() {
   const app = express();
 
-  // Koyeb sits in front of the API, so client IPs arrive via headers.
+  // The platform terminates TLS in front of the API, so client IPs arrive via
+  // headers.
   app.set('trust proxy', 1);
 
   app.use(helmet());
@@ -23,16 +25,23 @@ export function createApp() {
   app.use(express.urlencoded({ extended: true }));
 
   // Outside the API prefix so the platform health check never counts against
-  // the rate limit.
+  // the rate limit, and answers without touching the database.
   app.get('/health', (_req, res) => {
     sendSuccess(res, 'ok', { uptime: process.uptime() });
   });
 
   // After /health so the platform's health probe does not flood the log.
-  app.use(env.API_PREFIX, requestLog, apiLimiter, routes);
+  app.use(env.API_PREFIX, requestLog, withDatabase, apiLimiter, routes);
 
   app.use(notFoundHandler);
   app.use(errorHandler);
 
   return app;
 }
+
+/**
+ * Vercel builds the deployment around the Express app it finds default-exported
+ * from `src/app.ts` — the one place in this repo where a default export is
+ * required rather than avoided. `server.ts` listens on this same instance.
+ */
+export default createApp();

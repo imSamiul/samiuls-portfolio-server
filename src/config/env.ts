@@ -55,6 +55,10 @@ const envSchema = z
     // update. Hence required in production.
     WEB_REVALIDATE_URL: z.string().optional(),
     REVALIDATE_SECRET: z.string().optional(),
+
+    // Set by the platform, never by hand. Work that outlives a response has to
+    // be handed to `waitUntil` there, which is a no-op anywhere else.
+    VERCEL: z.string().optional(),
   })
   .superRefine((value, ctx) => {
     if (value.NODE_ENV !== 'production') return;
@@ -84,6 +88,7 @@ export const env = parsed.data;
 
 export const isProduction = env.NODE_ENV === 'production';
 export const isTest = env.NODE_ENV === 'test';
+export const isServerless = Boolean(env.VERCEL);
 
 export const corsOrigins = env.CORS_ORIGIN.split(',').map((origin) =>
   origin.trim(),

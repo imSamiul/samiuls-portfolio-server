@@ -5,23 +5,33 @@ meta {
 }
 
 get {
-  url: {{baseUrl}}{{apiPrefix}}/project/getAllProjects
+  url: {{baseUrl}}{{apiPrefix}}/project/getAllProjects?page=1&limit=9
   body: none
   auth: none
 }
 
+params:query {
+  page: 1
+  limit: 9
+}
+
 script:post-response {
-  if (res.status === 200 && res.body.data.length > 0) {
-    bru.setEnvVar('projectId', res.body.data[0].id);
-    bru.setEnvVar('projectSlug', res.body.data[0].slug);
+  if (res.status === 200 && res.body.data.items.length > 0) {
+    bru.setEnvVar('projectId', res.body.data.items[0].id);
+    bru.setEnvVar('projectSlug', res.body.data.items[0].slug);
   }
 }
 
 docs {
   # List Projects
 
-  Public: **published projects only**, sorted by `order` ascending and then
-  newest first. Drafts live behind **List All For Dashboard**.
+  Public: **published projects only**, sorted by `order` ascending, then newest
+  first, then by `id` so two projects sharing both keys cannot swap places
+  between pages. Drafts live behind **List All For Dashboard**.
+
+  **Paginated.** `page` defaults to 1 and `limit` to 9 (max 50); anything below
+  1 is a 422. The website renders page one on the server and fetches the rest as
+  the visitor scrolls, using `meta.hasMore` to know when to stop.
 
   Fills the `projectId` and `projectSlug` variables from the first project, so
   the by-id and by-slug requests work straight after this one.
@@ -41,26 +51,35 @@ docs {
   ```json
   {
     "success": true,
-    "message": "3 projects",
-    "data": [
-      {
-        "id": "…",
-        "title": "…",
-        "slug": "bari-vara",
-        "status": "published",
-        "order": 0,
-        "summary": "…",
-        "frontEndTech": ["Next.js"],
-        "backEndTech": ["Express"],
-        "liveLink": "https://…",
-        "frontEndRepo": "https://…",
-        "backEndRepo": "https://…",
-        "showOnHomepage": true,
-        "image": "https://res.cloudinary.com/…/portfolio/projects/….webp",
-        "createdAt": "2026-01-01T00:00:00.000Z",
-        "updatedAt": "2026-01-01T00:00:00.000Z"
+    "message": "1 projects",
+    "data": {
+      "items": [
+        {
+          "id": "…",
+          "title": "…",
+          "slug": "bari-vara",
+          "status": "published",
+          "order": 0,
+          "summary": "…",
+          "frontEndTech": ["Next.js"],
+          "backEndTech": ["Express"],
+          "liveLink": "https://…",
+          "frontEndRepo": "https://…",
+          "backEndRepo": "https://…",
+          "showOnHomepage": true,
+          "image": "https://res.cloudinary.com/…/portfolio/projects/….webp",
+          "createdAt": "2026-01-01T00:00:00.000Z",
+          "updatedAt": "2026-01-01T00:00:00.000Z"
+        }
+      ],
+      "meta": {
+        "page": 1,
+        "limit": 9,
+        "total": 13,
+        "totalPages": 2,
+        "hasMore": true
       }
-    ]
+    }
   }
   ```
 

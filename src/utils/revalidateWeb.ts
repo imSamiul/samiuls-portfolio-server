@@ -1,4 +1,6 @@
-import { env } from '../config/env.js';
+import { waitUntil } from '@vercel/functions';
+
+import { env, isServerless } from '../config/env.js';
 
 /**
  * The website caches project data indefinitely and relies on this webhook to
@@ -24,7 +26,7 @@ function revalidateWeb(tags: string[]) {
     return;
   }
 
-  void fetch(WEB_REVALIDATE_URL, {
+  const delivered = fetch(WEB_REVALIDATE_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -34,6 +36,13 @@ function revalidateWeb(tags: string[]) {
   }).catch(() => {
     // Swallowed: see above.
   });
+
+  // Callers fire this after the response, and a serverless instance can be
+  // frozen the moment the response is sent — so the platform has to be told to
+  // stay alive until the webhook settles.
+  if (isServerless) {
+    waitUntil(delivered);
+  }
 }
 
 /** Drops every list plus the one project's own page. */
